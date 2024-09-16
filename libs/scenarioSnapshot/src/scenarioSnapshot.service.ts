@@ -1,24 +1,34 @@
 // import { autoRun, foreachInRepo, withTransaction } from "@app/commons";
 // import { CkbTxStatus, actionGroupStatus, actionGroup } from "@app/schemas";
+import { getTokenBalance } from "@app/commons";
+import { ScenarioSnapshot } from "@app/schemas";
 import { ccc } from "@ckb-ccc/core";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { HDKey } from "@scure/bip32";
-import { mnemonicToSeedSync } from "@scure/bip39";
-import { Pool } from "@utxoswap/swap-sdk-js";
-import axios, { Axios } from "axios";
+import { Client, Collector, PoolInfo, Token } from "@utxoswap/swap-sdk-js";
+import { Axios } from "axios";
+import { tokenRegistry } from "parameters/tokenRegistry";
+import { walletRegistry } from "parameters/walletRegistry";
 import { EntityManager } from "typeorm";
+import {
+  PoolSnapshot,
+  ScenarioSnapshotStatus,
+  WalletStatus,
+} from "../../schemas/src/schemas/scenarioSnapshot.schema";
 import { ActionGroupRepo, CkbTxRepo } from "./repos";
 
 @Injectable()
 export class ScenarioSnapshotService {
   private readonly logger = new Logger(ScenarioSnapshotService.name);
   private readonly requester: Axios;
-  private readonly client: ccc.Client;
+  private readonly CKBClient: ccc.Client;
+  private readonly UTXOSwapClient: Client;
   private readonly rootKey: HDKey;
   private readonly pathPrefix: string;
   private readonly feeRate: number;
-  private pools: Pool[] = [];
+  private readonly collector: Collector;
+  private readonly tokenRegistry: Token[] = tokenRegistry;
 
   constructor(
     configService: ConfigService,
@@ -26,31 +36,77 @@ export class ScenarioSnapshotService {
     private readonly ckbTxRepo: CkbTxRepo,
     private readonly actionGroupRepo: ActionGroupRepo,
   ) {
-    const mnemonic = configService.get<string>("server_mnemonic");
-    if (!mnemonic) {
-      throw Error("Empty mnemonic");
+    const ckbRpcUrl = configService.get<string>("send.ckb_rpc_url");
+    const ckbIndexerUrl = configService.get<string>("execute.ckbIndexerUrl");
+    if (ckbIndexerUrl === undefined) {
+      throw Error("Empty ckbIndexerUrl");
     }
-    const feeRate = configService.get<number>("fee_rate");
-    if (feeRate === undefined) {
-      throw Error("Empty fee rate");
-    }
-    const checkInterval = configService.get<number>("check.interval");
-    if (checkInterval === undefined) {
-      throw Error("Empty check interval");
-    }
-    const ckbRpcUrl = configService.get<string>("check.ckb_rpc_url");
-
-    this.rootKey = HDKey.fromMasterSeed(mnemonicToSeedSync(mnemonic));
-    this.pathPrefix = configService.get<string>("hd_path_prefix") ?? "";
-    this.feeRate = feeRate;
-    this.client = configService.get<boolean>("is_mainnet")
+    this.CKBClient = configService.get<boolean>("is_mainnet")
       ? new ccc.ClientPublicMainnet({ url: ckbRpcUrl })
       : new ccc.ClientPublicTestnet({ url: ckbRpcUrl });
+    this.collector = new Collector({ ckbIndexerUrl });
+  }
 
-    this.requester = axios.create({
-      baseURL: configService.get<string>("check.mempool_rpc_url"),
+  async getLatestScenarioSnapshot(): Promise<ScenarioSnapshot> {
+    const timestamp: number = Math.floor(Date.now() / 1000);
+    const poolInfos: PoolInfo[] = [];
+    const poolSnapshots: PoolSnapshot[] = [];
+    const walletStatuses: WalletStatus[] = [];
+    /* Get PoolInfos and store poolSnapshots */
+    tokenRegistry.forEach(async (token) => {
+      const { list: pools } = await this.UTXOSwapClient.getPoolsByToken({
+        pageNo: 0,
+        pageSize: 10,
+        searchKey: token.typeHash,
+      });
+      poolInfos.push(...pools);
+      pools.forEach((pool) => {
+        const poolSnapshot: PoolSnapshot = {
+          assetXSymbol: pool.assetX.symbol,
+          assetYSymbol: pool.assetY.symbol,
+          basedAsset: pool.basedAsset,
+          batchId: pool.batchId,
+          feeRate: pool.feeRate,
+          protocolLpAmount: pool.protocolLpAmount,
+          totalLpSupply: pool.totalLpSupply,
+          typeHash: pool.typeHash,
+          poolShare: pool.poolShare,
+          LPToken: pool.LPToken,
+          tvl: pool.tvl,
+          dayTxsCount: pool.dayTxsCount,
+          dayVolume: pool.dayVolume,
+          dayApr: pool.dayApr,
+        };
+        poolSnapshots.push(poolSnapshot);
+      });
     });
-    // autoRun(this.logger, checkInterval, () => this.checkActionGroups());
+
+    /* Get WalletStatuses */
+
+    walletRegistry.forEach((wallet) => {
+      const walletStatus: WalletStatus = {
+        address: wallet.address,
+        balances: [],
+      };
+      /* Enumerate and Get Balances */
+      tokenRegistry.forEach(async (token) => {
+        const type = token.typeScript;
+        walletStatus.balances.push({
+          symbol: token.symbol,
+          balance: await getTokenBalance(this.collector, wallet.address, type),
+        });
+      });
+      walletStatuses.push(walletStatus);
+    });
+
+    const latestScenarioSnapshot: ScenarioSnapshot = {
+      timestamp,
+      ScenarioSnapshotStatus: ScenarioSnapshotStatus.Stored,
+      walletStatuses,
+      poolSnapshots,
+      poolInfos,
+    };
+    return latestScenarioSnapshot;
   }
 
   // async checkActionGroups() {

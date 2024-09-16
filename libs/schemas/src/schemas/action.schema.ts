@@ -1,5 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
-import { ActionGroup } from "./actionGroup.schema";
+import { ActionGroup } from "./scenarioSnapshot.schema";
 
 export enum ActionType {
   AddLiquidity = 1,

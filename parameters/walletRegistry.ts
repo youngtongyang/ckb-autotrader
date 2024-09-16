@@ -6,4 +6,4 @@ export const DefaultWallet: Wallet = {
   walletConfig: MainWalletConfig,
 };
 
-export const WalletRegistry: Wallet[] = [DefaultWallet];
+export const walletRegistry: Wallet[] = [DefaultWallet];
