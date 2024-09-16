@@ -7,34 +7,24 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { Action } from "./action.schema";
 
-export enum PlanStatus {
-  Saved = "Saved",
-  TxCreated = "TxCreated",
-  Finished = "Finished",
+export enum ActionGroupStatus {
+  NotStarted = "NotStarted",
+  Executing = "Executing",
+  Aborted = "Aborted",
+  Completed = "Completed",
 }
 
-export enum ActionType {
-  AddLiquidity = 1,
-  RemoveLiquidity = 2,
-  SwapExactInputForOutput = 3,
-  SwapInputForExactOutput = 4,
-  ClaimProtocolLiquidity = 5,
-  Transfer = 6,
-}
-
-export enum ActionStatus {
-  NotStarted = 0,
-  IntentPending = 1,
-  IntentCreated = 2,
-  TransferPending = 3,
-  Confirmed = 4,
+export enum ScenarioSnapshotStatus {
+  Stored = "Stored",
+  NotStored = "NotStored",
 }
 
 @Entity()
 export class WalletStatus {
-  @PrimaryColumn()
-  block_height: number;
+  @PrimaryGeneratedColumn("increment")
+  action_id: number;
 
   @Column({ type: "varchar" })
   address: string;
@@ -46,50 +36,36 @@ export class WalletStatus {
 @Entity()
 export class ScenarioSnapshot {
   @PrimaryColumn()
-  block_height: number;
+  timestamp: number;
+
+  @Column()
+  blockHeight: number;
+
+  @Column()
+  ScenarioSnapshotStatus: ScenarioSnapshotStatus;
 
   @Column("simple-json")
-  wallet_statuses: WalletStatus[];
-}
+  walletStatuses: WalletStatus[];
 
-@Entity()
-export class Action {
-  @PrimaryGeneratedColumn("increment")
-  action_id: number;
-
-  @Column(() => ActionGroup)
-  action_group_id: ActionGroup;
-
-  @Column({ type: "varchar" })
-  actor_address: string;
-
-  @Column({ type: "varchar" })
-  target_address: string;
-
-  @Column({
-    type: "enum",
-    enum: ActionType,
-    default: ActionType.Transfer,
-  })
-  action_type: ActionType;
-
-  @Column({ type: "varchar" })
-  action_status: ActionStatus;
-
-  @Column({ type: "varchar" })
-  action_tx_hash: string;
+  @Column("simple-json")
+  price_references: {
+    inputSymbol: string;
+    outputSymbol: string;
+    buyPrice: string;
+    decimals: string;
+  }[];
 }
 
 @Entity()
 export class ActionGroup {
-  @PrimaryGeneratedColumn("increment")
-  id: number;
+  @PrimaryColumn()
+  creationTimestamp: number;
 
   @Column({ type: "integer" })
-  creation_block_number: number;
+  creationBlockNumber: number;
 
   @Column(() => ScenarioSnapshot)
-  scenario_snapshot: ScenarioSnapshot;
+  scenarioSnapshot: ScenarioSnapshot;
 
   @OneToMany(() => Action, (action) => action.action_group_id)
   actions: Action[];
@@ -97,8 +73,12 @@ export class ActionGroup {
   @Column({ type: "text" })
   rawType: string;
 
-  @Column({ type: "varchar" })
-  status: PlanStatus;
+  @Column({
+    type: "enum",
+    enum: ActionGroupStatus,
+    default: ActionGroupStatus.NotStarted,
+  })
+  actionGroupStatus: ActionGroupStatus;
 
   @CreateDateColumn()
   createdAt: Date;

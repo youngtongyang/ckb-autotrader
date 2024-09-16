@@ -1,15 +1,21 @@
 import { autoRun, foreachInRepo } from "@app/commons";
-import { CkbTxStatus } from "@app/schemas";
+import { ActionGroup, CkbTxStatus } from "@app/schemas";
 import { ccc } from "@ckb-ccc/core";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { Client, Collector, Pool } from "@utxoswap/swap-sdk-js";
 import { CkbTxRepo } from "./repos";
 
 @Injectable()
-export class SendService {
-  private readonly logger = new Logger(SendService.name);
-  private readonly client: ccc.Client = new ccc.ClientPublicTestnet();
+export class ExecuteService {
+  private readonly logger = new Logger(ExecuteService.name);
+  private readonly apiKey = "your api key";
+  private readonly CKBClient: ccc.Client = new ccc.ClientPublicTestnet();
+  private readonly UTXOSwapClient: Client = new Client(false, this.apiKey);
+  private readonly collector: Collector;
   private readonly maxPendingTxs: number;
+  private pools: Pool[] = [];
+  private actionGroups: ActionGroup[] = [];
 
   constructor(
     configService: ConfigService,
@@ -24,10 +30,14 @@ export class SendService {
       throw Error("Empty max pending txs");
     }
     const ckbRpcUrl = configService.get<string>("send.ckb_rpc_url");
-
-    this.client = configService.get<boolean>("is_mainnet")
+    const ckbIndexerUrl = configService.get<string>("execute.ckbIndexerUrl");
+    if (ckbIndexerUrl === undefined) {
+      throw Error("Empty ckbIndexerUrl");
+    }
+    this.CKBClient = configService.get<boolean>("is_mainnet")
       ? new ccc.ClientPublicMainnet({ url: ckbRpcUrl })
       : new ccc.ClientPublicTestnet({ url: ckbRpcUrl });
+    this.collector = new Collector({ ckbIndexerUrl });
     this.maxPendingTxs = maxPendingTxs;
 
     autoRun(this.logger, sendInterval, () => this.checkTxs());
@@ -53,11 +63,11 @@ export class SendService {
           throw new Error("Too many transactions");
         }
 
-        const res = await this.client.getTransaction(ckbTx.txHash);
+        const res = await this.CKBClient.getTransaction(ckbTx.txHash);
         if (!res || res.status === "sent") {
           const tx = ccc.Transaction.from(JSON.parse(ckbTx.rawTx));
           try {
-            await this.client.sendTransaction(tx, "passthrough");
+            await this.CKBClient.sendTransaction(tx, "passthrough");
           } catch (e) {
             if (
               e instanceof ccc.ErrorClientVerification ||
@@ -78,8 +88,8 @@ export class SendService {
               const isDead = await (async () => {
                 try {
                   return (
-                    (await this.client.getCell(e.outPoint)) &&
-                    !(await this.client.getCellLive(e.outPoint, false))
+                    (await this.CKBClient.getCell(e.outPoint)) &&
+                    !(await this.CKBClient.getCellLive(e.outPoint, false))
                   );
                 } catch (err) {
                   return false;
@@ -128,7 +138,7 @@ export class SendService {
         status: true,
       },
       handler: async (ckbTx) => {
-        const res = await this.client.getTransaction(ckbTx.txHash);
+        const res = await this.CKBClient.getTransaction(ckbTx.txHash);
         if (!res || res.status === "sent") {
           if (Date.now() - ckbTx.updatedAt.getTime() >= 120000) {
             this.logger.error(
@@ -170,7 +180,7 @@ export class SendService {
         status: true,
       },
       handler: async (ckbTx) => {
-        const res = await this.client.getTransaction(ckbTx.txHash);
+        const res = await this.CKBClient.getTransaction(ckbTx.txHash);
         if (!res || res.blockNumber === undefined) {
           this.logger.error(
             `CKB TX ${ckbTx.id} hash ${ckbTx.txHash} rearranged by not found.`,
@@ -187,7 +197,7 @@ export class SendService {
           return;
         }
 
-        const tip = await this.client.getTip();
+        const tip = await this.CKBClient.getTip();
         if (tip - res.blockNumber < ccc.numFrom(24)) {
           return;
         }

@@ -1,4 +1,5 @@
-import { autoRun } from "@app/commons";
+// import { autoRun, foreachInRepo, withTransaction } from "@app/commons";
+// import { CkbTxStatus, ActionGroupStatus, ActionGroup } from "@app/schemas";
 import { ccc } from "@ckb-ccc/core";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -9,8 +10,8 @@ import { EntityManager } from "typeorm";
 import { ActionGroupRepo, CkbTxRepo } from "./repos";
 
 @Injectable()
-export class CheckService {
-  private readonly logger = new Logger(CheckService.name);
+export class StrategyService {
+  private readonly logger = new Logger(StrategyService.name);
   private readonly requester: Axios;
   private readonly client: ccc.Client;
   private readonly rootKey: HDKey;
@@ -21,7 +22,7 @@ export class CheckService {
     configService: ConfigService,
     private readonly entityManager: EntityManager,
     private readonly ckbTxRepo: CkbTxRepo,
-    private readonly planRepo: ActionGroupRepo,
+    private readonly actionGroupRepo: ActionGroupRepo,
   ) {
     const mnemonic = configService.get<string>("server_mnemonic");
     if (!mnemonic) {
@@ -47,71 +48,72 @@ export class CheckService {
     this.requester = axios.create({
       baseURL: configService.get<string>("check.mempool_rpc_url"),
     });
-    autoRun(this.logger, checkInterval, () => this.checkActionGroups());
+    // autoRun(this.logger, checkInterval, () => this.checkActionGroups());
   }
 
-  async checkActionGroups() {
-    // const { data: blockNumber } =
-    //   await this.requester.get("/blocks/tip/height");
-    // if (typeof blockNumber !== "number") {
-    //   this.logger.error(`Invalid block number: ${blockNumber}`);
-    //   return;
-    // }
-    // await foreachInRepo({
-    //   repo: this.planRepo,
-    //   criteria: {
-    //     blockNumber: LessThanOrEqual(blockNumber),
-    //     status: Or(Equal(ActionGroupStatus.Saved), Equal(ActionGroupStatus.TxCreated)),
-    //   },
-    //   isSerial: true,
-    //   handler: async (plan) => {
-    //     switch (plan.status) {
-    //       case ActionGroupStatus.TxCreated:
-    //         if (!(await this.handleTxCreatedActionGroup(plan))) {
-    //           return;
-    //         }
-    //       // Fallthrough to recreate failed tx
-    //       case ActionGroupStatus.Saved: {
-    //         if (!(await this.handleSavedActionGroup(plan))) {
-    //           return;
-    //         }
-    //         break;
-    //       }
-    //       default: {
-    //         throw new Error(`Unknown plan ${plan.id} status ${status}`);
-    //       }
-    //     }
-    //   },
-    // });
-  }
+  // async checkActionGroups() {
+  //   const { data: blockNumber } =
+  //     await this.requester.get("/blocks/tip/height");
+  //   if (typeof blockNumber !== "number") {
+  //     this.logger.error(`Invalid block number: ${blockNumber}`);
+  //     return;
+  //   }
 
-  // async handleTxCreatedActionGroup(plan: ActionGroup): Promise<boolean> {
-  //   if (!plan.txHash) {
-  //     this.logger.error(`Unexpected empty tx hash for plan ${plan.id}`);
+  //   await foreachInRepo({
+  //     repo: this.actiongroupRepo,
+  //     criteria: {
+  //       blockNumber: LessThanOrEqual(blockNumber),
+  //       status: Or(Equal(ActionGroupStatus.Saved), Equal(ActionGroupStatus.TxCreated)),
+  //     },
+  //     isSerial: true,
+  //     handler: async (actiongroup) => {
+  //       switch (actiongroup.status) {
+  //         case ActionGroupStatus.TxCreated:
+  //           if (!(await this.handleTxCreatedActionGroup(actiongroup))) {
+  //             return;
+  //           }
+  //         // Fallthrough to recreate failed tx
+  //         case ActionGroupStatus.Saved: {
+  //           if (!(await this.handleSavedActionGroup(actiongroup))) {
+  //             return;
+  //           }
+  //           break;
+  //         }
+  //         default: {
+  //           throw new Error(`Unknown actiongroup ${actiongroup.id} status ${status}`);
+  //         }
+  //       }
+  //     },
+  //   });
+  // }
+
+  // async handleTxCreatedActionGroup(actiongroup: ActionGroup): Promise<boolean> {
+  //   if (!actiongroup.txHash) {
+  //     this.logger.error(`Unexpected empty tx hash for actiongroup ${actiongroup.id}`);
   //     return false;
   //   }
 
-  //   const tx = await this.ckbTxRepo.findTxByHash(plan.txHash);
+  //   const tx = await this.ckbTxRepo.findTxByHash(actiongroup.txHash);
   //   if (!tx) {
-  //     this.logger.error(`Tx with hash ${plan.txHash} not found`);
+  //     this.logger.error(`Tx with hash ${actiongroup.txHash} not found`);
   //     return false;
   //   }
 
   //   if (tx.status === CkbTxStatus.Failed) {
-  //     this.logger.error(`ActionGroup ${plan.id} failed.`);
-  //     await this.planRepo.updateStatus(plan, ActionGroupStatus.Saved);
+  //     this.logger.error(`ActionGroup ${actiongroup.id} failed.`);
+  //     await this.Repo.updateStatus(actiongroup, ActionGroupStatus.Saved);
   //     await this.client.cache.clear();
   //     return true;
   //   } else if (tx.status === CkbTxStatus.Confirmed) {
-  //     this.logger.log(`ActionGroup ${plan.id} finished.`);
-  //     await this.planRepo.updateStatus(plan, ActionGroupStatus.Finished);
+  //     this.logger.log(`ActionGroup ${actiongroup.id} finished.`);
+  //     await this.actiongroupRepo.updateStatus(actiongroup, ActionGroupStatus.Finished);
   //     return false;
   //   } else {
   //     return false;
   //   }
   // }
 
-  // async handleSavedActionGroup(plan: ActionGroup): Promise<boolean> {
+  // async handleSavedActionGroup(actiongroup: ActionGroup): Promise<boolean> {
   //   const key = this.rootKey.derive(`${this.pathPrefix}0`);
   //   if (!key.privateKey) {
   //     throw Error("Failed to derive key");
@@ -120,17 +122,17 @@ export class CheckService {
   //   const sendAddress = await signer.getRecommendedAddress();
   //   const { script: change } = await signer.getRecommendedAddressObj();
 
-  //   const type = ccc.Script.from(JSON.parse(plan.rawType));
+  //   const type = ccc.Script.from(JSON.parse(actiongroup.rawType));
 
   //   const tx = ccc.Transaction.from({
   //     outputs: [
   //       {
-  //         lock: (await ccc.Address.fromString(plan.address, this.client))
+  //         lock: (await ccc.Address.fromString(actiongroup.address, this.client))
   //           .script,
   //         type,
   //       },
   //     ],
-  //     outputsData: [ccc.numLeToBytes(plan.amount, 16)],
+  //     outputsData: [ccc.numLeToBytes(actiongroup.amount, 16)],
   //   });
   //   await tx.addCellDepsOfKnownScripts(this.client, ccc.KnownScript.XUdt);
 
@@ -154,15 +156,15 @@ export class CheckService {
   //   await this.client.cache.markTransactions(signedTx);
 
   //   this.logger.log(
-  //     `Sending plan ${plan.id}, from ${sendAddress} amount ${plan.amount} hash ${type.hash()} to ${plan.address}, tx hash ${txHash}`,
+  //     `Sending actiongroup ${actiongroup.id}, from ${sendAddress} amount ${actiongroup.amount} hash ${type.hash()} to ${actiongroup.address}, tx hash ${txHash}`,
   //   );
 
   //   await withTransaction(this.entityManager, undefined, async (manager) => {
-  //     const planRepo = new ActionGroupRepo(manager);
+  //     const actiongroupRepo = new ActionGroupRepo(manager);
   //     const ckbTxRepo = new CkbTxRepo(manager);
 
   //     const rawTx = tx.stringify();
-  //     await planRepo.updateTxHash(plan, txHash);
+  //     await actiongroupRepo.updateTxHash(actiongroup, txHash);
   //     await ckbTxRepo.save({
   //       txHash,
   //       rawTx,
