@@ -16,13 +16,22 @@
         "tsConfigPath": "libs/commons/tsconfig.lib.json"
       }
     },
-    "send": {
+    "execute": {
       "type": "library",
-      "root": "libs/send",
+      "root": "libs/execute",
       "entryFile": "index",
-      "sourceRoot": "libs/send/src",
+      "sourceRoot": "libs/execute/src",
       "compilerOptions": {
-        "tsConfigPath": "libs/send/tsconfig.lib.json"
+        "tsConfigPath": "libs/execute/tsconfig.lib.json"
+      }
+    },
+    "scenarioSnapshot": {
+      "type": "library",
+      "root": "libs/scenarioSnapshot",
+      "entryFile": "index",
+      "sourceRoot": "libs/scenarioSnapshot/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/scenarioSnapshot/tsconfig.lib.json"
       }
     },
     "schemas": {
@@ -32,6 +41,15 @@
       "sourceRoot": "libs/schemas/src",
       "compilerOptions": {
         "tsConfigPath": "libs/schemas/tsconfig.lib.json"
+      }
+    },
+    "strategy": {
+      "type": "library",
+      "root": "libs/strategy",
+      "entryFile": "index",
+      "sourceRoot": "libs/strategy/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/strategy/tsconfig.lib.json"
       }
     },
     "check": {

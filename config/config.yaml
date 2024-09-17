@@ -18,18 +18,10 @@ check:
   # ckb_rpc_url: wss://testnet.ckb.dev/ws
   mempool_rpc_url: https://mempool.space/api/
 
-send:
+execute:
   interval: 1000
   max_pending_txs: 250
   # ckb_rpc_url: wss://testnet.ckb.dev/ws
 
-token:
-  mainnet:
-    sUDT_code_hash: 0x12345
-    xUDT_code_hahs: 0x23456
-  testnet:
-    sUDT_code_hash: 0x12345
-    xUDT_code_hahs: 0x23456
-
-execute:
+scenarioSnapshot:
   ckbIndexerUrl: https://testnet.ckbapp.dev

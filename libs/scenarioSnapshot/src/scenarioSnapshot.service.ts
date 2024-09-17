@@ -45,7 +45,7 @@ export class ScenarioSnapshotService {
     private readonly ckbTxRepo: CkbTxRepo,
     private readonly scenarioSnapshotRepo: ScenarioSnapshotRepo,
   ) {
-    const ckbRpcUrl = configService.get<string>("send.ckb_rpc_url");
+    const ckbRpcUrl = configService.get<string>("execute.ckb_rpc_url");
     const ckbIndexerUrl = configService.get<string>("execute.ckbIndexerUrl");
     if (ckbIndexerUrl === undefined) {
       throw Error("Empty ckbIndexerUrl");
