@@ -8,14 +8,17 @@ export class Strategy {
 
 export class WalletConfig {
   privateKey: string;
-  balanceConfig?: { symbol: string; portion: number }[];
-  constructor(
-    privateKey: string,
-    balanceConfig: { symbol: string; portion: number }[],
-  ) {
+  balanceConfig?: BalanceConfig[];
+  constructor(privateKey: string, balanceConfig: BalanceConfig[]) {
     this.privateKey = privateKey;
     this.balanceConfig = balanceConfig;
   }
+}
+
+export class BalanceConfig {
+  symbol: string;
+  portionInStrategy?: number;
+  portionInWallet?: number;
 }
 
 export class CMMWallet implements Wallet {
@@ -26,12 +29,12 @@ export class CMMWallet implements Wallet {
   walletStatus?: WalletStatus;
   constructor(
     address: string,
-    wallet_config: WalletConfig,
-    wallet_status?: WalletStatus,
+    walletConfig: WalletConfig,
+    walletStatus?: WalletStatus,
   ) {
     this.address = address;
-    this.walletStatus = wallet_status;
-    this.walletConfig = wallet_config;
+    this.walletStatus = walletStatus;
+    this.walletConfig = walletConfig;
   }
 }
 

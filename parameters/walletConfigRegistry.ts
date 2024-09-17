@@ -1,7 +1,7 @@
 import { WalletConfig } from "parameters";
 
 export const MainWalletConfig: WalletConfig = {
-  private_key: "",
+  privateKey: "",
 };
 
 export const WalletConfigRegistry: WalletConfig[] = [MainWalletConfig];

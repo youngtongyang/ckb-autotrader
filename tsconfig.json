@@ -18,6 +18,12 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
+      "@app/check": [
+        "libs/check/src"
+      ],
+      "@app/check/*": [
+        "libs/check/src/*"
+      ],
       "@app/commons": [
         "libs/commons/src"
       ],
