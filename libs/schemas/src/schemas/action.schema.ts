@@ -1,5 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
-import { ActionGroup } from "./scenarioSnapshot.schema";
+import { ScenarioSnapshot } from "./scenarioSnapshot.schema";
 
 export enum ActionType {
   AddLiquidity = 1,
@@ -23,31 +23,31 @@ export enum ActionStatus {
 @Entity()
 export class Action {
   @PrimaryGeneratedColumn("increment")
-  action_id: number;
+  actionID: number;
 
-  @Column(() => ActionGroup)
-  action_group_id: ActionGroup;
-
-  @Column({ type: "varchar" })
-  actor_address: string;
+  @Column(() => ScenarioSnapshot)
+  scenarioSnapshotTimestamp: ScenarioSnapshot;
 
   @Column({ type: "varchar" })
-  target_address: string;
+  actorAddress: string;
+
+  @Column({ type: "varchar" })
+  targetAddress: string;
 
   @Column({
     type: "enum",
     enum: ActionType,
     default: ActionType.Transfer,
   })
-  action_type: ActionType;
+  actionType: ActionType;
 
   @Column({
     type: "enum",
     enum: ActionStatus,
     default: ActionStatus.NotStarted,
   })
-  action_status: ActionStatus;
+  actionStatus: ActionStatus;
 
   @Column({ type: "varchar" })
-  action_tx_hash: string;
+  actionTxHash: string;
 }

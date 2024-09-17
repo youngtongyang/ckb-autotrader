@@ -1,4 +1,5 @@
 import { WalletStatus } from "@app/schemas";
+import { Wallet } from "@ckb-ccc/core";
 
 export class Strategy {
   strategyName: string;
@@ -17,7 +18,9 @@ export class WalletConfig {
   }
 }
 
-export class Wallet {
+export class CMMWallet implements Wallet {
+  name: string;
+  icon: string;
   address: string;
   walletConfig: WalletConfig;
   walletStatus?: WalletStatus;

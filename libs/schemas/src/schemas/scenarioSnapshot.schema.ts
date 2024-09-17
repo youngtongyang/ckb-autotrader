@@ -74,31 +74,8 @@ export class ScenarioSnapshot {
   @Column()
   ScenarioSnapshotStatus: ScenarioSnapshotStatus;
 
-  @Column("simple-json")
-  walletStatuses: WalletStatus[];
-
-  @Column("simple-json") // Serializable version of poolInfos
-  poolSnapshots: PoolSnapshot[];
-
-  poolInfos: PoolInfo[];
-}
-
-@Entity()
-export class ActionGroup {
-  @PrimaryColumn()
-  creationTimestamp: number;
-
-  @Column({ type: "integer" })
-  creationBlockNumber: number;
-
-  @Column(() => ScenarioSnapshot)
-  scenarioSnapshot: ScenarioSnapshot;
-
-  @OneToMany(() => Action, (action) => action.action_group_id)
+  @OneToMany(() => Action, (action) => action.scenarioSnapshotTimestamp)
   actions: Action[];
-
-  @Column({ type: "text" })
-  rawType: string;
 
   @Column({
     type: "enum",
@@ -106,6 +83,14 @@ export class ActionGroup {
     default: ActionGroupStatus.NotStarted,
   })
   actionGroupStatus: ActionGroupStatus;
+
+  @Column("simple-json")
+  walletStatuses: WalletStatus[];
+
+  @Column("simple-json") // Serializable version of poolInfos
+  poolSnapshots: PoolSnapshot[];
+
+  poolInfos: PoolInfo[];
 
   @CreateDateColumn()
   createdAt: Date;

@@ -1,11 +1,11 @@
-import { ActionGroup } from "@app/schemas";
+import { ScenarioSnapshot } from "@app/schemas";
 import { Injectable } from "@nestjs/common";
 import { EntityManager, Repository } from "typeorm";
 
 @Injectable()
-export class ActionGroupRepo extends Repository<ActionGroup> {
+export class ScenarioSnapshotRepo extends Repository<ScenarioSnapshot> {
   constructor(manager: EntityManager) {
-    super(ActionGroup, manager);
+    super(ScenarioSnapshot, manager);
   }
 
   // async updateStatus(plan: ActionGroup, action: Action, status: ActionStatus) {
