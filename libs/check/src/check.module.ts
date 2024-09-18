@@ -1,9 +1,9 @@
 import { Module } from "@nestjs/common";
 import { CheckService } from "./check.service";
-import { ActionGroupRepo, CkbTxRepo } from "./repos";
+import { CkbTxRepo } from "./repos";
 
 @Module({
-  providers: [CheckService, CkbTxRepo, ActionGroupRepo],
+  providers: [CheckService, CkbTxRepo],
   exports: [CheckService],
 })
 export class CheckModule {}

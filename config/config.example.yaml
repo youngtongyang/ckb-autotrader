@@ -1,0 +1,28 @@
+port: 8080
+
+server_mnemonic: arch discover high wild bulk myth debate beyond recipe husband fee elegant
+hd_path_prefix: m/44'/309'/0'/0/
+fee_rate: 1000
+
+is_mainnet: false
+
+mysql:
+  host: db
+  port: 3306
+  username: appdb
+  password: appdb
+  database: appdb
+
+check:
+  interval: 1000
+  # ckb_rpc_url: wss://testnet.ckb.dev/ws
+  mempool_rpc_url: https://mempool.space/api/
+
+execute:
+  interval: 1000
+  max_pending_txs: 250
+  # ckb_rpc_url: wss://testnet.ckb.dev/ws
+
+scenarioSnapshot:
+  ckbIndexerUrl: https://testnet.ckbapp.dev
+  utxoAPIKey: 

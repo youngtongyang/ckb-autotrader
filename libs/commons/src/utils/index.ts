@@ -1,6 +1,5 @@
-import { addressToScript } from "@nervosnetwork/ckb-sdk-utils";
+import { addressToScript, hexToBytes } from "@nervosnetwork/ckb-sdk-utils";
 import { Logger } from "@nestjs/common";
-import { leToU128 } from "@rgbpp-sdk/ckb";
 import { Collector } from "@utxoswap/swap-sdk-js";
 
 export function sleep(time: number) {
@@ -16,6 +15,10 @@ export function autoRun(
   autoIntervalMsRaw: string | number,
   handler: () => any,
 ) {
+  interface CustomError extends Error {
+    context?: any;
+  }
+  
   const autoIntervalMs = Number(autoIntervalMsRaw);
   if (
     autoIntervalMs &&
@@ -27,13 +30,24 @@ export function autoRun(
         try {
           await handler();
         } catch (err) {
-          logger.error(err.message, err.stack, err.context);
+          const error = err as CustomError;
+          logger.error(error.message, error.stack, error.context);
         }
         await sleep(autoIntervalMs);
       }
     })();
   }
 }
+
+export const append0x = (hex?: string): string => {
+  return hex?.startsWith('0x') ? hex : `0x${hex}`;
+};
+
+export const leToU128 = (leHex: string): bigint => {
+  const bytes = hexToBytes(append0x(leHex));
+  const beHex = `0x${bytes.reduceRight((pre, cur) => pre + cur.toString(16).padStart(2, '0'), '')}`;
+  return BigInt(beHex);
+};
 
 export const getTokenBalance = async (
   collector: Collector,

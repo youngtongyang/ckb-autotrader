@@ -1,6 +1,6 @@
 // import { autoRun, foreachInRepo, withTransaction } from "@app/commons";
 // import { CkbTxStatus, actionGroupStatus, actionGroup } from "@app/schemas";
-import { getTokenBalance } from "@app/commons";
+import { autoRun, getTokenBalance } from "@app/commons";
 import { ExecuteService } from "@app/execute";
 import { ScenarioSnapshot } from "@app/schemas";
 import { ccc } from "@ckb-ccc/core";
@@ -45,22 +45,42 @@ export class ScenarioSnapshotService {
     private readonly ckbTxRepo: CkbTxRepo,
     private readonly scenarioSnapshotRepo: ScenarioSnapshotRepo,
   ) {
-    const ckbRpcUrl = configService.get<string>("execute.ckb_rpc_url");
-    const ckbIndexerUrl = configService.get<string>("execute.ckbIndexerUrl");
+    this.logger.verbose("ScenarioSnapshotService.constructor | started");
+    const ckbRpcUrl = configService.get<string>("common.ckb_rpc_url");
+    const ckbIndexerUrl = configService.get<string>("common.ckbIndexerUrl");
     if (ckbIndexerUrl === undefined) {
       throw Error("Empty ckbIndexerUrl");
     }
+    const UTXOSwapApiKey = configService.get<string>("common.UTXOSwapApiKey");
+    const isMainnet = configService.get<boolean>("is_mainnet");
+    this.UTXOSwapClient = new Client(isMainnet, UTXOSwapApiKey);
     this.CKBClient = configService.get<boolean>("is_mainnet")
       ? new ccc.ClientPublicMainnet({ url: ckbRpcUrl })
       : new ccc.ClientPublicTestnet({ url: ckbRpcUrl });
     this.collector = new Collector({ ckbIndexerUrl });
     this.strategyService = strategyService;
     this.executeService = executeService;
-  }
 
+    const scenarioSnapshotIntervalInSeconds = configService.get<number>(
+      "scenarioSnapshot.interval_in_seconds",
+    );
+    if (scenarioSnapshotIntervalInSeconds === undefined) {
+      throw Error("Empty scenarioSnapshotIntervalInSeconds");
+    }
+    this.logger.verbose("ScenarioSnapshotService.constructor | finished");
+    autoRun(this.logger, scenarioSnapshotIntervalInSeconds * 1000, () =>
+      this.main(),
+    );
+  }
+  /* Main Function */
   async main(): Promise<void> {
+    this.logger.debug("ScenarioSnapshotService.main | started");
     const latestScenarioSnapshot = await this.getLatestScenarioSnapshot();
     this.strategyService.generateActions(latestScenarioSnapshot);
+    this.executeService.executeActions(latestScenarioSnapshot);
+    this.finalizeScenarioSnapshot(latestScenarioSnapshot);
+    this.scenarioSnapshotRepo.syncScenarioSnapshot(latestScenarioSnapshot);
+    this.logger.debug("ScenarioSnapshotService.main | finished");
   }
 
   async getLatestScenarioSnapshot(): Promise<ScenarioSnapshot> {
@@ -68,55 +88,7 @@ export class ScenarioSnapshotService {
     const poolInfos: PoolInfo[] = [];
     const poolSnapshots: PoolSnapshot[] = [];
     const walletStatuses: WalletStatus[] = [];
-    /* Get PoolInfos and store poolSnapshots */
-    tokenRegistry.forEach(async (token) => {
-      const { list: pools } = await this.UTXOSwapClient.getPoolsByToken({
-        pageNo: 0,
-        pageSize: 10,
-        searchKey: token.typeHash,
-      });
-      poolInfos.push(...pools);
-      pools.forEach((pool) => {
-        const poolSnapshot: PoolSnapshot = {
-          assetXSymbol: pool.assetX.symbol,
-          assetYSymbol: pool.assetY.symbol,
-          basedAsset: pool.basedAsset,
-          batchId: pool.batchId,
-          feeRate: pool.feeRate,
-          protocolLpAmount: pool.protocolLpAmount,
-          totalLpSupply: pool.totalLpSupply,
-          typeHash: pool.typeHash,
-          poolShare: pool.poolShare,
-          LPToken: pool.LPToken,
-          tvl: pool.tvl,
-          dayTxsCount: pool.dayTxsCount,
-          dayVolume: pool.dayVolume,
-          dayApr: pool.dayApr,
-        };
-        poolSnapshots.push(poolSnapshot);
-      });
-    });
-
-    /* Get WalletStatuses */
-
-    walletRegistry.forEach((wallet) => {
-      const walletStatus: WalletStatus = {
-        address: wallet.address,
-        balances: [],
-      };
-      /* Enumerate and Get Balances */
-      tokenRegistry.forEach(async (token) => {
-        const type = token.typeScript;
-        walletStatus.balances.push({
-          symbol: token.symbol,
-          balance: await getTokenBalance(this.collector, wallet.address, type),
-        });
-      });
-      walletStatuses.push(walletStatus);
-    });
-
     const tokenList = tokenRegistry.map((token) => token.symbol);
-
     /* Get PoolInfos and store poolSnapshots */
     tokenRegistry.forEach(async (token) => {
       const { list: pools } = await this.UTXOSwapClient.getPoolsByToken({
@@ -152,6 +124,37 @@ export class ScenarioSnapshotService {
         poolInfos.push(pool);
       }
     });
+    this.logger.verbose(
+      "ScenarioSnapshotService.getLatestScenarioSnapshot | this.poolInfo",
+      poolInfos,
+    );
+    this.logger.debug(
+      `ScenarioSnapshotService.getLatestScenarioSnapshot | amount of pools: ${poolSnapshots.length}`,
+    );
+
+    /* Get WalletStatuses */
+    walletRegistry.forEach((wallet) => {
+      const walletStatus: WalletStatus = {
+        address: wallet.address,
+        balances: [],
+      };
+      /* Enumerate and Get Balances */
+      tokenRegistry.forEach(async (token) => {
+        const type = token.typeScript;
+        walletStatus.balances.push({
+          symbol: token.symbol,
+          balance: await getTokenBalance(this.collector, wallet.address, type),
+        });
+      });
+      walletStatuses.push(walletStatus);
+    });
+    this.logger.verbose(
+      "ScenarioSnapshotService.getLatestScenarioSnapshot | walletStatuses",
+      walletStatuses,
+    );
+    this.logger.debug(
+      `ScenarioSnapshotService.getLatestScenarioSnapshot | amount of wallets: ${walletStatuses.length}`,
+    );
 
     /* Finalize */
     const latestScenarioSnapshot: ScenarioSnapshot = {
@@ -165,13 +168,17 @@ export class ScenarioSnapshotService {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+    this.logger.debug(
+      "ScenarioSnapshotService.getLatestScenarioSnapshot |",
+      latestScenarioSnapshot,
+    );
     return latestScenarioSnapshot;
   }
 
-  async syncScenarioSnapshot(
+  async finalizeScenarioSnapshot(
     scenarioSnapshot: ScenarioSnapshot,
   ): Promise<void> {
-    // TODO: implement
+    // TODO: Implement
     console.log(scenarioSnapshot);
     return;
   }

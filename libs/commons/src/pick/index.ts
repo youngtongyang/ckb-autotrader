@@ -49,6 +49,9 @@ export function pickWithFactory<T>(
   if (Array.isArray(factory)) {
     if (Array.isArray(data)) {
       return data.map((v) => pick(factory[0](v), v)) as T;
+    } else {
+      // Return undefined or a default value
+      return undefined;
     }
   } else {
     return pick(factory(data), data);

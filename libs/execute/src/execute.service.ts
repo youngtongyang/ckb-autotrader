@@ -1,5 +1,6 @@
 import {
   Action,
+  ActionGroupStatus,
   ActionStatus,
   ActionType,
   ScenarioSnapshot,
@@ -35,44 +36,58 @@ export class ExecuteService {
       : new ccc.ClientPublicTestnet({ url: ckbRpcUrl });
     this.collector = new Collector({ ckbIndexerUrl });
   }
-  async executeActions(scenarioSnapshot: ScenarioSnapshot): Promise<boolean> {
-    for (const action of scenarioSnapshot.actions) {
-      let status: ActionStatus;
-      switch (action.actionType) {
-        case ActionType.Transfer:
-          status = await this.executeTransfer(action);
-          break;
-        case ActionType.AddLiquidity:
-          status = await this.executeAddLiquidity(action);
-          break;
-        case ActionType.RemoveLiquidity:
-          status = await this.executeRemoveLiquidity(action);
-          break;
-        case ActionType.SwapExactInputForOutput:
-          status = await this.executeSwapExactInputForOutput(action);
-          break;
-        case ActionType.SwapInputForExactOutput:
-          status = await this.executeSwapInputForExactOutput(action);
-          break;
-        case ActionType.ClaimProtocolLiquidity:
-          status = await this.executeClaimProtocolLiquidity(action);
-          break;
-        default:
-          throw new Error("Unsupported action type");
+
+  async executeActions(scenarioSnapshot: ScenarioSnapshot): Promise<void> {
+    // NOTE: This function is designed to be blocking.
+    // TODO: Abort by timer;
+    while (scenarioSnapshot.actionGroupStatus === (ActionGroupStatus.Aborted || ActionGroupStatus.Completed)) {
+      for (const action of scenarioSnapshot.actions) {
+        // TODO: This is blocking, should be refactored to be non-blocking
+        let status: ActionStatus;
+        switch (action.actionType) {
+          case ActionType.Transfer:
+            status = await this.executeTransfer(action);
+            break;
+          case ActionType.AddLiquidity:
+            status = await this.executeAddLiquidity(action);
+            break;
+          case ActionType.RemoveLiquidity:
+            status = await this.executeRemoveLiquidity(action);
+            break;
+          case ActionType.SwapExactInputForOutput:
+            status = await this.executeSwapExactInputForOutput(action);
+            break;
+          case ActionType.SwapInputForExactOutput:
+            status = await this.executeSwapInputForExactOutput(action);
+            break;
+          case ActionType.ClaimProtocolLiquidity:
+            status = await this.executeClaimProtocolLiquidity(action);
+            break;
+          default:
+            throw new Error("Unsupported action type");
+        }
+        action.actionStatus = status;
       }
-      action.actionStatus = status;
+      /* Return and finish if all actionStatuses are Stored or any one of them is Aborted */
+      if (scenarioSnapshot.actions.every(
+        (action) =>
+          action.actionStatus === ActionStatus.Stored,
+      )) {
+        scenarioSnapshot.actionGroupStatus = ActionGroupStatus.Completed;
+      } else if (scenarioSnapshot.actions.some(
+        (action) =>
+          action.actionStatus === ActionStatus.Aborted,
+      )) {
+        scenarioSnapshot.actionGroupStatus = ActionGroupStatus.Aborted;
+      }
     }
-    /* If all actionStatuses are either Aborted or Stored, return true*/
-    return scenarioSnapshot.actions.every(
-      (action) =>
-        action.actionStatus === ActionStatus.Aborted ||
-        action.actionStatus === ActionStatus.Stored,
-    );
+    return;
   }
 
   /* Execution Functions
    * 1. Can be called repeatedly to try progressing the action;
    * 2. Should return the output status of the action;
+   * 3. Should be able to abort;
    */
   private async executeTransfer(action: Action): Promise<ActionStatus> {
     //TODO: implement

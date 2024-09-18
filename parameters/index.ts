@@ -4,6 +4,10 @@ import { Wallet } from "@ckb-ccc/core";
 export class Strategy {
   strategyName: string;
   wallets: Wallet[];
+  constructor(strategyName: string, wallets: Wallet[]) {
+    this.strategyName = strategyName;
+    this.wallets = wallets;
+  }
 }
 
 export class WalletConfig {
@@ -19,6 +23,11 @@ export class BalanceConfig {
   symbol: string;
   portionInStrategy?: number;
   portionInWallet?: number;
+  constructor(symbol: string, portionInStrategy: number = 0, portionInWallet: number = 0) {
+    this.symbol = symbol;
+    this.portionInStrategy = portionInStrategy;
+    this.portionInWallet = portionInWallet;
+  }
 }
 
 export class CMMWallet implements Wallet {
@@ -29,12 +38,16 @@ export class CMMWallet implements Wallet {
   walletStatus?: WalletStatus;
   constructor(
     address: string,
+    name: string,
     walletConfig: WalletConfig,
     walletStatus?: WalletStatus,
   ) {
     this.address = address;
+    this.name = name;
+    this.icon = "Not Using";
     this.walletStatus = walletStatus;
     this.walletConfig = walletConfig;
+
   }
 }
 
