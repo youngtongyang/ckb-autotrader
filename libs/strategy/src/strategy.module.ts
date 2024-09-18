@@ -1,9 +1,10 @@
+import { ActionRepo } from "@app/execute/repos";
+import { ScenarioSnapshotRepo } from "@app/scenarioSnapshot/repos";
 import { Module } from "@nestjs/common";
-import { ActionRepo } from "./repos";
 import { StrategyService } from "./strategy.service";
 
 @Module({
-  providers: [StrategyService, ActionRepo],
+  providers: [StrategyService, ActionRepo, ScenarioSnapshotRepo],
   exports: [StrategyService],
 })
 export class StrategyModule {}

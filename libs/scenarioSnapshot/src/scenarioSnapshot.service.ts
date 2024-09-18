@@ -2,14 +2,15 @@
 // import { CkbTxStatus, actionGroupStatus, actionGroup } from "@app/schemas";
 import { autoRun, getTokenBalance } from "@app/commons";
 import { ExecuteService } from "@app/execute";
+import { ActionRepo } from "@app/execute/repos";
 import { ScenarioSnapshot } from "@app/schemas";
+import { StrategyService } from "@app/strategy";
 import { ccc } from "@ckb-ccc/core";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { HDKey } from "@scure/bip32";
 import { Client, Collector, PoolInfo, Token } from "@utxoswap/swap-sdk-js";
 import { Axios } from "axios";
-import { StrategyService } from "libs/strategy/src";
 import { CMMWallet } from "parameters";
 import { tokenRegistry } from "parameters/tokenRegistry";
 import { walletRegistry } from "parameters/walletRegistry";
@@ -20,7 +21,7 @@ import {
   ScenarioSnapshotStatus,
   WalletStatus,
 } from "../../schemas/src/schemas/scenarioSnapshot.schema";
-import { ActionRepo, ScenarioSnapshotRepo } from "./repos";
+import { ScenarioSnapshotRepo } from "./repos";
 
 @Injectable()
 export class ScenarioSnapshotService {
@@ -34,13 +35,11 @@ export class ScenarioSnapshotService {
   private readonly collector: Collector;
   private readonly tokenRegistry: Token[] = tokenRegistry;
   private temporaryWallets: CMMWallet[] = [];
-  private readonly strategyService: StrategyService;
-  private readonly executeService: ExecuteService;
 
   constructor(
     configService: ConfigService,
-    strategyService: StrategyService,
-    executeService: ExecuteService,
+    private executeService: ExecuteService,
+    private strategyService: StrategyService,
     private readonly entityManager: EntityManager,
     private readonly actionRepo: ActionRepo,
     private readonly scenarioSnapshotRepo: ScenarioSnapshotRepo,
@@ -58,8 +57,6 @@ export class ScenarioSnapshotService {
       ? new ccc.ClientPublicMainnet({ url: ckbRpcUrl })
       : new ccc.ClientPublicTestnet({ url: ckbRpcUrl });
     this.collector = new Collector({ ckbIndexerUrl });
-    this.strategyService = strategyService;
-    this.executeService = executeService;
 
     const scenarioSnapshotIntervalInSeconds = configService.get<number>(
       "scenarioSnapshot.interval_in_seconds",

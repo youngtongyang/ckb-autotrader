@@ -4,6 +4,6 @@ import { ActionRepo } from "./repos";
 
 @Module({
   providers: [ExecuteService, ActionRepo],
-  exports: [ExecuteService],
+  exports: [ExecuteService, ActionRepo],
 })
 export class ExecuteModule {}

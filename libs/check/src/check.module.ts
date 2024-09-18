@@ -1,6 +1,6 @@
+import { ActionRepo } from "@app/execute/repos";
 import { Module } from "@nestjs/common";
 import { CheckService } from "./check.service";
-import { ActionRepo } from "./repos";
 
 @Module({
   providers: [CheckService, ActionRepo],

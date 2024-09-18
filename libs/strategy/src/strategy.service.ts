@@ -1,5 +1,6 @@
 // import { autoRun, foreachInRepo, withTransaction } from "@app/commons";
 // import { CkbTxStatus, ActionGroupStatus, ActionGroup } from "@app/schemas";
+import { ActionRepo } from "@app/execute/repos";
 import { ScenarioSnapshot } from "@app/schemas";
 import { ccc } from "@ckb-ccc/core";
 import { Injectable, Logger } from "@nestjs/common";
@@ -8,8 +9,6 @@ import { HDKey } from "@scure/bip32";
 import { mnemonicToSeedSync } from "@scure/bip39";
 import axios, { Axios } from "axios";
 import { Strategy } from "parameters";
-import { EntityManager } from "typeorm";
-import { ActionRepo, ScenarioSnapshotRepo } from "./repos";
 
 @Injectable()
 export class StrategyService {
@@ -23,9 +22,7 @@ export class StrategyService {
 
   constructor(
     configService: ConfigService,
-    private readonly entityManager: EntityManager,
     private readonly actionRepo: ActionRepo,
-    private readonly scenarioSnapshotRepo: ScenarioSnapshotRepo,
   ) {
     const mnemonic = configService.get<string>("server_mnemonic");
     if (!mnemonic) {

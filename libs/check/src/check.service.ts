@@ -1,4 +1,5 @@
 import { autoRun } from "@app/commons";
+import { ActionRepo } from "@app/execute/repos";
 import { ccc } from "@ckb-ccc/core";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -6,7 +7,6 @@ import { HDKey } from "@scure/bip32";
 import { mnemonicToSeedSync } from "@scure/bip39";
 import axios, { Axios } from "axios";
 import { EntityManager } from "typeorm";
-import { ActionRepo } from "./repos";
 
 @Injectable()
 export class CheckService {

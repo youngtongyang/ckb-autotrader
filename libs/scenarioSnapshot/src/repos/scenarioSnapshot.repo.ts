@@ -18,9 +18,11 @@ export class ScenarioSnapshotRepo extends Repository<ScenarioSnapshot> {
       await this.save(scenarioSnapshot);
     } else {
       //TODO: May change this to partial update.
-      await this.update({ timestamp: scenarioSnapshot.timestamp }, scenarioSnapshot);
+      await this.update(
+        { timestamp: scenarioSnapshot.timestamp },
+        scenarioSnapshot,
+      );
     }
     return;
   }
-
 }
