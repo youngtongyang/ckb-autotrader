@@ -20,7 +20,7 @@ import {
   ScenarioSnapshotStatus,
   WalletStatus,
 } from "../../schemas/src/schemas/scenarioSnapshot.schema";
-import { CkbTxRepo, ScenarioSnapshotRepo } from "./repos";
+import { ActionRepo, ScenarioSnapshotRepo } from "./repos";
 
 @Injectable()
 export class ScenarioSnapshotService {
@@ -42,7 +42,7 @@ export class ScenarioSnapshotService {
     strategyService: StrategyService,
     executeService: ExecuteService,
     private readonly entityManager: EntityManager,
-    private readonly ckbTxRepo: CkbTxRepo,
+    private readonly actionRepo: ActionRepo,
     private readonly scenarioSnapshotRepo: ScenarioSnapshotRepo,
   ) {
     this.logger.verbose("ScenarioSnapshotService.constructor | started");

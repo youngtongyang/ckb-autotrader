@@ -1,1 +1,1 @@
-export * from "./ckbTx.repo";
+export * from "./action.repo";

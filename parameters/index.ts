@@ -23,7 +23,11 @@ export class BalanceConfig {
   symbol: string;
   portionInStrategy?: number;
   portionInWallet?: number;
-  constructor(symbol: string, portionInStrategy: number = 0, portionInWallet: number = 0) {
+  constructor(
+    symbol: string,
+    portionInStrategy: number = 0,
+    portionInWallet: number = 0,
+  ) {
     this.symbol = symbol;
     this.portionInStrategy = portionInStrategy;
     this.portionInWallet = portionInWallet;
@@ -47,7 +51,6 @@ export class CMMWallet implements Wallet {
     this.icon = "Not Using";
     this.walletStatus = walletStatus;
     this.walletConfig = walletConfig;
-
   }
 }
 

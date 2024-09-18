@@ -1,4 +1,11 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from "typeorm";
 import { ScenarioSnapshot } from "./scenarioSnapshot.schema";
 
 export enum ActionType {
@@ -11,6 +18,7 @@ export enum ActionType {
 }
 
 export enum ActionStatus {
+  Failed = -2,
   Aborted = -1,
   NotStarted = 0,
   IntentCreationPending = 1,
@@ -50,4 +58,17 @@ export class Action {
 
   @Column({ type: "varchar" })
   actionTxHash: string;
+
+  @Column({ type: "varchar" })
+  @Index()
+  txHash: string;
+
+  @Column({ type: "longtext" })
+  rawTx: string;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

@@ -7,6 +7,7 @@ import { ConfigService } from "@nestjs/config";
 import { HDKey } from "@scure/bip32";
 import { mnemonicToSeedSync } from "@scure/bip39";
 import axios, { Axios } from "axios";
+import { Strategy } from "parameters";
 import { EntityManager } from "typeorm";
 import { CkbTxRepo, ScenarioSnapshotRepo } from "./repos";
 
@@ -18,6 +19,7 @@ export class StrategyService {
   private readonly rootKey: HDKey;
   private readonly pathPrefix: string;
   private readonly feeRate: number;
+  private activeStrategies: Strategy[] = [];
 
   constructor(
     configService: ConfigService,
@@ -49,7 +51,11 @@ export class StrategyService {
     this.requester = axios.create({
       baseURL: configService.get<string>("check.mempool_rpc_url"),
     });
-    // autoRun(this.logger, checkInterval, () => this.checkActionGroups());
+    /* Load Strategies */
+    // TODO: Implement
+
+    /* Manage Temporary Wallets */
+    // TODO: Implement
   }
 
   /* Entry Function*/
@@ -64,5 +70,10 @@ export class StrategyService {
     // TODO:implement
     console.log(scenarioSnapshot);
     return;
+  }
+
+  /* Other Strategy-related Functions */
+  private async spawnTemporaryWallets(): Promise<void> {
+    //TODO: implement
   }
 }
