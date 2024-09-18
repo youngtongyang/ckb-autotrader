@@ -9,7 +9,7 @@ import { mnemonicToSeedSync } from "@scure/bip39";
 import axios, { Axios } from "axios";
 import { Strategy } from "parameters";
 import { EntityManager } from "typeorm";
-import { CkbTxRepo, ScenarioSnapshotRepo } from "./repos";
+import { ActionRepo, ScenarioSnapshotRepo } from "./repos";
 
 @Injectable()
 export class StrategyService {
@@ -24,7 +24,7 @@ export class StrategyService {
   constructor(
     configService: ConfigService,
     private readonly entityManager: EntityManager,
-    private readonly ckbTxRepo: CkbTxRepo,
+    private readonly actionRepo: ActionRepo,
     private readonly scenarioSnapshotRepo: ScenarioSnapshotRepo,
   ) {
     const mnemonic = configService.get<string>("server_mnemonic");

@@ -1,9 +1,9 @@
 import { Module } from "@nestjs/common";
-import { CkbTxRepo } from "./repos";
+import { ActionRepo } from "./repos";
 import { StrategyService } from "./strategy.service";
 
 @Module({
-  providers: [StrategyService, CkbTxRepo],
+  providers: [StrategyService, ActionRepo],
   exports: [StrategyService],
 })
 export class StrategyModule {}

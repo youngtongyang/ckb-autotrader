@@ -9,7 +9,7 @@ import { ccc } from "@ckb-ccc/core";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Client, Collector, Pool } from "@utxoswap/swap-sdk-js";
-import { CkbTxRepo } from "./repos";
+import { ActionRepo } from "./repos";
 
 @Injectable()
 export class ExecuteService {
@@ -24,7 +24,7 @@ export class ExecuteService {
 
   constructor(
     configService: ConfigService,
-    private readonly ckbTxRepo: CkbTxRepo,
+    private readonly actionRepo: ActionRepo,
   ) {
     const ckbRpcUrl = configService.get<string>("execute.ckb_rpc_url");
     const ckbIndexerUrl = configService.get<string>("execute.ckbIndexerUrl");
@@ -40,7 +40,10 @@ export class ExecuteService {
   async executeActions(scenarioSnapshot: ScenarioSnapshot): Promise<void> {
     // NOTE: This function is designed to be blocking.
     // TODO: Abort by timer;
-    while (scenarioSnapshot.actionGroupStatus === (ActionGroupStatus.Aborted || ActionGroupStatus.Completed)) {
+    while (
+      scenarioSnapshot.actionGroupStatus ===
+      (ActionGroupStatus.Aborted || ActionGroupStatus.Completed)
+    ) {
       for (const action of scenarioSnapshot.actions) {
         // TODO: This is blocking, should be refactored to be non-blocking
         let status: ActionStatus;
@@ -69,15 +72,17 @@ export class ExecuteService {
         action.actionStatus = status;
       }
       /* Return and finish if all actionStatuses are Stored or any one of them is Aborted */
-      if (scenarioSnapshot.actions.every(
-        (action) =>
-          action.actionStatus === ActionStatus.Stored,
-      )) {
+      if (
+        scenarioSnapshot.actions.every(
+          (action) => action.actionStatus === ActionStatus.Stored,
+        )
+      ) {
         scenarioSnapshot.actionGroupStatus = ActionGroupStatus.Completed;
-      } else if (scenarioSnapshot.actions.some(
-        (action) =>
-          action.actionStatus === ActionStatus.Aborted,
-      )) {
+      } else if (
+        scenarioSnapshot.actions.some(
+          (action) => action.actionStatus === ActionStatus.Aborted,
+        )
+      ) {
         scenarioSnapshot.actionGroupStatus = ActionGroupStatus.Aborted;
       }
     }

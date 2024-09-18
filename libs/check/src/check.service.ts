@@ -6,7 +6,7 @@ import { HDKey } from "@scure/bip32";
 import { mnemonicToSeedSync } from "@scure/bip39";
 import axios, { Axios } from "axios";
 import { EntityManager } from "typeorm";
-import { CkbTxRepo } from "./repos";
+import { ActionRepo } from "./repos";
 
 @Injectable()
 export class CheckService {
@@ -20,7 +20,7 @@ export class CheckService {
   constructor(
     configService: ConfigService,
     private readonly entityManager: EntityManager,
-    private readonly ckbTxRepo: CkbTxRepo,
+    private readonly actionRepo: ActionRepo,
   ) {
     const mnemonic = configService.get<string>("server_mnemonic");
     if (!mnemonic) {
