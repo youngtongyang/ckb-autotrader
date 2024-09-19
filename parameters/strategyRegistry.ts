@@ -1,5 +1,5 @@
 import { Strategy } from "parameters";
-import { DefaultWallet } from "./walletRegistry";
+import { DefaultWallet } from "./walletRegistry.example";
 
 /* Note: Feel free to extend this type for your own strategy
 

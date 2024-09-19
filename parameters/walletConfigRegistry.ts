@@ -1,7 +1,7 @@
-import { WalletConfig } from "parameters";
+import { BalanceConfig, WalletConfig } from "parameters";
 
 export const MainWalletConfig: WalletConfig = {
-  privateKey: "",
+  balanceConfig: [new BalanceConfig("CKB", 1, 1)],
 };
 
 export const WalletConfigRegistry: WalletConfig[] = [MainWalletConfig];

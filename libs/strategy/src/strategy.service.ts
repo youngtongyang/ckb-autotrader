@@ -8,7 +8,8 @@ import { ConfigService } from "@nestjs/config";
 import { HDKey } from "@scure/bip32";
 import { mnemonicToSeedSync } from "@scure/bip39";
 import axios, { Axios } from "axios";
-import { Strategy } from "parameters";
+import { BalanceConfig, Strategy } from "parameters";
+import { walletRegistry } from "parameters/walletRegistry.example";
 
 @Injectable()
 export class StrategyService {
@@ -64,8 +65,31 @@ export class StrategyService {
   private async generateTransferActions(
     scenarioSnapshot: ScenarioSnapshot,
   ): Promise<void> {
-    // TODO:implement
-    console.log(scenarioSnapshot);
+    const activeBalanceConfigs: {
+      address: string;
+      balanceConfig: BalanceConfig;
+    }[] = [];
+    for (const walletStatus of scenarioSnapshot.walletStatuses) {
+      const matchingWallet = walletRegistry.find(
+        (wallet) => wallet.address === walletStatus.address,
+      );
+      if (!matchingWallet) {
+        this.logger.error(
+          `Wallet ${walletStatus.address} not found in wallet registry`,
+        );
+        continue;
+      }
+      if (matchingWallet.walletConfig.balanceConfig === undefined) {
+        continue;
+      }
+      for (const balanceConfig of matchingWallet.walletConfig.balanceConfig) {
+        activeBalanceConfigs.push({
+          address: walletStatus.address,
+          balanceConfig,
+        });
+      }
+    }
+    // TODO: Implement algorithm for generating transfer actions;
     return;
   }
 

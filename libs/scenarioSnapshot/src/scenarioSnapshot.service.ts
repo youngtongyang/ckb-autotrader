@@ -20,7 +20,7 @@ import {
 import { Axios } from "axios";
 import { CMMWallet } from "parameters";
 import { activeTokenRegistry } from "parameters/tokenRegistry";
-import { walletRegistry } from "parameters/walletRegistry";
+import { walletRegistry } from "parameters/walletRegistry.example";
 import { EntityManager } from "typeorm";
 import {
   ActionGroupStatus,
@@ -186,7 +186,7 @@ export class ScenarioSnapshotService {
         activePoolInstance.calculateOutputAmountAndPriceImpactWithExactInput(
           "1",
         );
-      this.logger.warn(
+      this.logger.verbose(
         `ScenarioSnapshotService.getLatestScenarioSnapshot | Price of Buying 1 ${activePool.assetX.symbol} with ${activePool.assetY.symbol}: ${buyPrice} ${activePool.assetY.symbol}`,
       );
       const reverseActivePoolInstance = new Pool({
@@ -203,7 +203,7 @@ export class ScenarioSnapshotService {
       } = reverseActivePoolInstance.calculateOutputAmountAndPriceImpactWithExactInput(
         "1",
       );
-      this.logger.warn(
+      this.logger.verbose(
         `ScenarioSnapshotService.getLatestScenarioSnapshot | Price of Buying 1 ${activePool.assetY.symbol} with ${activePool.assetX.symbol}: ${reverseBuyPrice} ${activePool.assetX.symbol}`,
       );
       const poolSnapshot: PoolSnapshot = {
@@ -228,8 +228,7 @@ export class ScenarioSnapshotService {
       poolInfos.push(activePool);
     }
     this.logger.verbose(
-      "ScenarioSnapshotService.getLatestScenarioSnapshot | poolInfo.length",
-      poolInfos.length,
+      `ScenarioSnapshotService.getLatestScenarioSnapshot | poolInfo.length :${poolInfos.length}`,
     );
     this.logger.verbose(
       `ScenarioSnapshotService.getLatestScenarioSnapshot | poolSnapshots.length: ${poolSnapshots.length}`,
@@ -238,7 +237,7 @@ export class ScenarioSnapshotService {
     /* Get WalletStatuses */
     for (const wallet of walletRegistry) {
       this.logger.verbose(
-        `GetLatestScenarioSnapshot | getting wallet status for wallet ${wallet.address}`,
+        `ScenarioSnapshotService.getLatestScenarioSnapshot | getting wallet status for wallet ${wallet.address}`,
       );
       const walletStatus: WalletStatus = {
         address: wallet.address,
@@ -248,7 +247,7 @@ export class ScenarioSnapshotService {
       /* Enumerate and Get Balances */
       for (const activeToken of activeTokens) {
         this.logger.verbose(
-          `GetLatestScenarioSnapshot | getting ${activeToken.symbol} balance for wallet ${wallet.address}`,
+          `ScenarioSnapshotService.getLatestScenarioSnapshot | getting ${activeToken.symbol} balance for wallet ${wallet.address}`,
         );
         const balance = await getTokenBalance(
           this.collector,
@@ -260,11 +259,11 @@ export class ScenarioSnapshotService {
           balance,
         });
         this.logger.verbose(
-          `GetLatestScenarioSnapshot | ${activeToken.symbol} balance for wallet ${wallet.address} is ${walletStatus.tokenBalances.slice(-1)[0].balance}`,
+          `ScenarioSnapshotService.getLatestScenarioSnapshot | ${activeToken.symbol} balance for wallet ${wallet.address} is ${walletStatus.tokenBalances.slice(-1)[0].balance}`,
         );
       }
       this.logger.verbose(
-        `GetLatestScenarioSnapshot | walletStatus.balances.length: ${walletStatus.tokenBalances.length} for wallet ${wallet.address}`,
+        `ScenarioSnapshotService.getLatestScenarioSnapshot | walletStatus.balances.length: ${walletStatus.tokenBalances.length} for wallet ${wallet.address}`,
       );
       walletStatuses.push(walletStatus);
     }

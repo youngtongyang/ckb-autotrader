@@ -42,6 +42,12 @@ export class Action {
   @Column({ type: "varchar" })
   targetAddress: string;
 
+  @Column({ type: "varchar" })
+  assetXSymbol: string;
+
+  @Column({ type: "varchar" })
+  assetYSymbol: string;
+
   @Column({
     type: "enum",
     enum: ActionType,

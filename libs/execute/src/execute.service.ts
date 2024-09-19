@@ -10,6 +10,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Client, Collector, Pool } from "@utxoswap/swap-sdk-js";
 import { ActionRepo } from "./repos";
+import { walletRegistry } from "parameters/walletRegistry.example";
 
 @Injectable()
 export class ExecuteService {
@@ -96,7 +97,18 @@ export class ExecuteService {
    */
   private async executeTransfer(action: Action): Promise<ActionStatus> {
     //TODO: implement
-    console.log(action);
+    if (action.assetXSymbol != action.assetYSymbol) {
+      throw new Error("AssetX and AssetY must be the same for transfer action");
+    }
+    if (action.actorAddress === action.targetAddress) {
+      throw new Error(
+        "Actor and target addresses must be different for transfer action",
+      );
+    }
+    const actorWallet = walletRegistry.find(
+      (wallet) => wallet.address === action.actorAddress,
+    );
+
     return ActionStatus.Confirmed;
   }
 

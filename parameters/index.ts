@@ -11,10 +11,8 @@ export class Strategy {
 }
 
 export class WalletConfig {
-  privateKey: string;
   balanceConfig?: BalanceConfig[];
-  constructor(privateKey: string, balanceConfig: BalanceConfig[]) {
-    this.privateKey = privateKey;
+  constructor(balanceConfig: BalanceConfig[]) {
     this.balanceConfig = balanceConfig;
   }
 }
@@ -38,15 +36,18 @@ export class CMMWallet implements Wallet {
   name: string;
   icon: string;
   address: string;
+  privateKey: string;
   walletConfig: WalletConfig;
   walletStatus?: WalletStatus;
   constructor(
     address: string,
+    privateKey: string,
     name: string,
     walletConfig: WalletConfig,
     walletStatus?: WalletStatus,
   ) {
     this.address = address;
+    this.privateKey = privateKey;
     this.name = name;
     this.icon = "Not Using";
     this.walletStatus = walletStatus;
