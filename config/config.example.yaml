@@ -5,24 +5,27 @@ hd_path_prefix: m/44'/309'/0'/0/
 fee_rate: 1000
 
 is_mainnet: false
+debug_mode: true
+
+common:
+  ckb_rpc_url: wss://testnet.ckb.dev/ws
+  ckb_indexer_url: https://testnet.ckbapp.dev
+  utxo_swap_api_key:
+  mempool_rpc_url: 
 
 mysql:
-  host: db
+  host: 
   port: 3306
-  username: appdb
-  password: appdb
-  database: appdb
+  username: 
+  password: 
+  database: 
 
 check:
   interval: 1000
-  # ckb_rpc_url: wss://testnet.ckb.dev/ws
-  mempool_rpc_url: https://mempool.space/api/
 
 execute:
   interval: 1000
   max_pending_txs: 250
-  # ckb_rpc_url: wss://testnet.ckb.dev/ws
 
-scenarioSnapshot:
-  ckbIndexerUrl: https://testnet.ckbapp.dev
-  utxoAPIKey: 
+scenario_snapshot:
+  interval_in_seconds: 10

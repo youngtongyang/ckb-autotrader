@@ -27,8 +27,11 @@ export class WalletStatus {
   @Column({ type: "varchar" })
   address: string;
 
+  @Column()
+  ckbBalance: bigint;
+
   @Column("simple-json")
-  balances: { symbol: string; balance: bigint }[];
+  tokenBalances: { symbol: string; balance: bigint }[];
 }
 
 @Entity()
@@ -60,12 +63,18 @@ export class PoolSnapshot {
   dayVolume: string;
   @Column({ type: "varchar" })
   dayApr: string;
+  @Column()
+  unitBuyPrice: string;
+  @Column()
+  unitSellPrice: string;
 }
 
 @Entity()
 export class ScenarioSnapshot {
   @PrimaryColumn()
   timestamp: number;
+
+  // flags: ScenarioSnapshotFlags;
 
   // TODO: Seems missing
   // @Column()
@@ -98,3 +107,8 @@ export class ScenarioSnapshot {
   @UpdateDateColumn()
   updatedAt: Date;
 }
+
+// class ScenarioSnapshotFlags {
+//   pool: boolean;
+//   wallet: boolean;
+// }

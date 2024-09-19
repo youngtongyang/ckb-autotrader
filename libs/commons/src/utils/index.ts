@@ -18,7 +18,7 @@ export function autoRun(
   interface CustomError extends Error {
     context?: any;
   }
-  
+
   const autoIntervalMs = Number(autoIntervalMsRaw);
   if (
     autoIntervalMs &&
@@ -40,12 +40,12 @@ export function autoRun(
 }
 
 export const append0x = (hex?: string): string => {
-  return hex?.startsWith('0x') ? hex : `0x${hex}`;
+  return hex?.startsWith("0x") ? hex : `0x${hex}`;
 };
 
 export const leToU128 = (leHex: string): bigint => {
   const bytes = hexToBytes(append0x(leHex));
-  const beHex = `0x${bytes.reduceRight((pre, cur) => pre + cur.toString(16).padStart(2, '0'), '')}`;
+  const beHex = `0x${bytes.reduceRight((pre, cur) => pre + cur.toString(16).padStart(2, "0"), "")}`;
   return BigInt(beHex);
 };
 

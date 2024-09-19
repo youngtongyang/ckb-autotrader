@@ -26,10 +26,10 @@ export class ExecuteService {
     configService: ConfigService,
     private readonly actionRepo: ActionRepo,
   ) {
-    const ckbRpcUrl = configService.get<string>("execute.ckb_rpc_url");
-    const ckbIndexerUrl = configService.get<string>("execute.ckbIndexerUrl");
+    const ckbRpcUrl = configService.get<string>("common.ckb_rpc_url");
+    const ckbIndexerUrl = configService.get<string>("common.ckb_indexer_url");
     if (ckbIndexerUrl === undefined) {
-      throw Error("Empty ckbIndexerUrl");
+      throw Error("Empty ckb_indexer_url");
     }
     this.CKBClient = configService.get<boolean>("is_mainnet")
       ? new ccc.ClientPublicMainnet({ url: ckbRpcUrl })

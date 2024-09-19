@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // import { autoRun, foreachInRepo, withTransaction } from "@app/commons";
 // import { CkbTxStatus, actionGroupStatus, actionGroup } from "@app/schemas";
 import { autoRun, getTokenBalance } from "@app/commons";
@@ -9,10 +10,16 @@ import { ccc } from "@ckb-ccc/core";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { HDKey } from "@scure/bip32";
-import { Client, Collector, PoolInfo, Token } from "@utxoswap/swap-sdk-js";
+import {
+  Client,
+  Collector,
+  Pool,
+  PoolInfo,
+  Token,
+} from "@utxoswap/swap-sdk-js";
 import { Axios } from "axios";
 import { CMMWallet } from "parameters";
-import { tokenRegistry } from "parameters/tokenRegistry";
+import { activeTokenRegistry } from "parameters/tokenRegistry";
 import { walletRegistry } from "parameters/walletRegistry";
 import { EntityManager } from "typeorm";
 import {
@@ -33,7 +40,7 @@ export class ScenarioSnapshotService {
   private readonly pathPrefix: string;
   private readonly feeRate: number;
   private readonly collector: Collector;
-  private readonly tokenRegistry: Token[] = tokenRegistry;
+  private activePools: Token[] = [];
   private temporaryWallets: CMMWallet[] = [];
 
   constructor(
@@ -46,11 +53,13 @@ export class ScenarioSnapshotService {
   ) {
     this.logger.verbose("ScenarioSnapshotService.constructor | started");
     const ckbRpcUrl = configService.get<string>("common.ckb_rpc_url");
-    const ckbIndexerUrl = configService.get<string>("common.ckbIndexerUrl");
+    const ckbIndexerUrl = configService.get<string>("common.ckb_indexer_url");
     if (ckbIndexerUrl === undefined) {
-      throw Error("Empty ckbIndexerUrl");
+      throw Error("Empty ckb_indexer_url");
     }
-    const UTXOSwapApiKey = configService.get<string>("common.UTXOSwapApiKey");
+    const UTXOSwapApiKey = configService.get<string>(
+      "common.utxo_swap_api_key",
+    );
     const isMainnet = configService.get<boolean>("is_mainnet");
     this.UTXOSwapClient = new Client(isMainnet, UTXOSwapApiKey);
     this.CKBClient = configService.get<boolean>("is_mainnet")
@@ -59,10 +68,10 @@ export class ScenarioSnapshotService {
     this.collector = new Collector({ ckbIndexerUrl });
 
     const scenarioSnapshotIntervalInSeconds = configService.get<number>(
-      "scenarioSnapshot.interval_in_seconds",
+      "scenario_snapshot.interval_in_seconds",
     );
     if (scenarioSnapshotIntervalInSeconds === undefined) {
-      throw Error("Empty scenarioSnapshotIntervalInSeconds");
+      throw Error("Empty scenario_snapshot.interval_in_seconds");
     }
     this.logger.verbose("ScenarioSnapshotService.constructor | finished");
     autoRun(this.logger, scenarioSnapshotIntervalInSeconds * 1000, () =>
@@ -73,11 +82,40 @@ export class ScenarioSnapshotService {
   async main(): Promise<void> {
     this.logger.debug("ScenarioSnapshotService.main | started");
     const latestScenarioSnapshot = await this.getLatestScenarioSnapshot();
-    this.strategyService.generateActions(latestScenarioSnapshot);
-    this.executeService.executeActions(latestScenarioSnapshot);
-    this.finalizeScenarioSnapshot(latestScenarioSnapshot);
-    this.scenarioSnapshotRepo.syncScenarioSnapshot(latestScenarioSnapshot);
-    this.logger.debug("ScenarioSnapshotService.main | finished");
+    // this.strategyService.generateActions(latestScenarioSnapshot);
+    // this.executeService.executeActions(latestScenarioSnapshot);
+    // this.finalizeScenarioSnapshot(latestScenarioSnapshot);
+    // this.scenarioSnapshotRepo.syncScenarioSnapshot(latestScenarioSnapshot);
+    await this.briefReportOfLatestScenarioSnapshot(latestScenarioSnapshot);
+  }
+
+  async briefReportOfLatestScenarioSnapshot(
+    latestScenarioSnapshot: ScenarioSnapshot,
+  ): Promise<void> {
+    this.logger.log(
+      `ScenarioSnapshotService.briefReportOfLatestScenarioSnapshot | poolSnapshots.length: ${latestScenarioSnapshot.poolSnapshots.length}`,
+    );
+    for (const poolSnapshot of latestScenarioSnapshot.poolSnapshots) {
+      this.logger.log(
+        `ScenarioSnapshotService.briefReportOfLatestScenarioSnapshot | == Pool ${poolSnapshot.assetYSymbol}/${poolSnapshot.assetXSymbol}  UnitBuyPrice:${poolSnapshot.unitBuyPrice} UnitSellPrice:${poolSnapshot.unitSellPrice}`,
+      );
+    }
+    this.logger.log(
+      `ScenarioSnapshotService.briefReportOfLatestScenarioSnapshot | ${latestScenarioSnapshot.walletStatuses.length} wallets`,
+    );
+    for (const walletStatus of latestScenarioSnapshot.walletStatuses) {
+      this.logger.log(
+        `ScenarioSnapshotService.briefReportOfLatestScenarioSnapshot | == Wallet ${walletStatus.address}`,
+      );
+      this.logger.log(
+        `ScenarioSnapshotService.briefReportOfLatestScenarioSnapshot | ==== CKB: ${walletStatus.ckbBalance}`,
+      );
+      walletStatus.tokenBalances.forEach((balance) => {
+        this.logger.log(
+          `ScenarioSnapshotService.briefReportOfLatestScenarioSnapshot | ==== ${balance.symbol}: ${balance.balance}`,
+        );
+      });
+    }
   }
 
   async getLatestScenarioSnapshot(): Promise<ScenarioSnapshot> {
@@ -85,78 +123,159 @@ export class ScenarioSnapshotService {
     const poolInfos: PoolInfo[] = [];
     const poolSnapshots: PoolSnapshot[] = [];
     const walletStatuses: WalletStatus[] = [];
-    const tokenList = tokenRegistry.map((token) => token.symbol);
     /* Get PoolInfos and store poolSnapshots */
-    tokenRegistry.forEach(async (token) => {
-      const { list: pools } = await this.UTXOSwapClient.getPoolsByToken({
-        pageNo: 0,
-        pageSize: 10,
-        searchKey: token.typeHash,
-      });
-      for (const pool of pools) {
-        if (
-          pool.assetY.symbol == token.symbol ||
-          !tokenList.includes(pool.assetY.symbol)
-        ) {
-          // Note: Only store the pool with the current token as assetX. Ignore all pools with assetY not included in the tokenRegistry.
-          continue;
-        }
-        const poolSnapshot: PoolSnapshot = {
-          assetXSymbol: pool.assetX.symbol,
-          assetYSymbol: pool.assetY.symbol,
-          basedAsset: pool.basedAsset,
-          batchId: pool.batchId,
-          feeRate: pool.feeRate,
-          protocolLpAmount: pool.protocolLpAmount,
-          totalLpSupply: pool.totalLpSupply,
-          typeHash: pool.typeHash,
-          poolShare: pool.poolShare,
-          LPToken: pool.LPToken,
-          tvl: pool.tvl,
-          dayTxsCount: pool.dayTxsCount,
-          dayVolume: pool.dayVolume,
-          dayApr: pool.dayApr,
-        };
-        poolSnapshots.push(poolSnapshot);
-        poolInfos.push(pool);
-      }
+    // TODO: Pagination might be necessary in the future
+    const { list: pools } = await this.UTXOSwapClient.getPoolsByToken({
+      pageNo: 0,
+      pageSize: 100,
+      searchKey:
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
     });
-    this.logger.verbose(
-      "ScenarioSnapshotService.getLatestScenarioSnapshot | this.poolInfo",
-      poolInfos,
+    const activePools = pools.filter(
+      (pool) =>
+        ["CKB", ...activeTokenRegistry].includes(pool.assetY.symbol) &&
+        ["CKB", ...activeTokenRegistry].includes(pool.assetX.symbol),
     );
-    this.logger.debug(
-      `ScenarioSnapshotService.getLatestScenarioSnapshot | amount of pools: ${poolSnapshots.length}`,
+    const additionalSearchKeys: string[] = [];
+    const activeTokens: Token[] = [];
+    for (const activePool of activePools) {
+      if (
+        ["CKB", ...activeTokenRegistry].includes(activePool.assetX.symbol) &&
+        ["CKB", ...activeTokenRegistry].includes(activePool.assetY.symbol)
+      ) {
+        const activeToken =
+          activePool.assetX.symbol === "CKB"
+            ? activePool.assetY
+            : activePool.assetX;
+        if (!additionalSearchKeys.includes(activeToken.symbol)) {
+          additionalSearchKeys.push(activeToken.symbol);
+          activeTokens.push(activeToken);
+        }
+      }
+    }
+
+    for (const searchKey of additionalSearchKeys) {
+      const { list: additionalPools } =
+        await this.UTXOSwapClient.getPoolsByToken({
+          pageNo: 0,
+          pageSize: 100,
+          searchKey,
+        });
+      for (const additionalPool of additionalPools) {
+        if (
+          ["CKB", ...activeTokenRegistry].includes(
+            additionalPool.assetX.symbol,
+          ) &&
+          ["CKB", ...activeTokenRegistry].includes(additionalPool.assetY.symbol)
+        ) {
+          activePools.push(additionalPool);
+        }
+      }
+    }
+
+    for (const activePool of activePools) {
+      const tokens: [Token, Token] = [activePool.assetX, activePool.assetY];
+      const activePoolInstance = new Pool({
+        tokens,
+        ckbAddress: "",
+        collector: this.collector,
+        client: this.UTXOSwapClient,
+        poolInfo: activePool,
+      });
+      const { output, priceImpact, buyPrice } =
+        activePoolInstance.calculateOutputAmountAndPriceImpactWithExactInput(
+          "1",
+        );
+      this.logger.warn(
+        `ScenarioSnapshotService.getLatestScenarioSnapshot | Price of Buying 1 ${activePool.assetX.symbol} with ${activePool.assetY.symbol}: ${buyPrice} ${activePool.assetY.symbol}`,
+      );
+      const reverseActivePoolInstance = new Pool({
+        tokens: [activePool.assetY, activePool.assetX],
+        ckbAddress: "",
+        collector: this.collector,
+        client: this.UTXOSwapClient,
+        poolInfo: activePool,
+      });
+      const {
+        output: reverseOutput,
+        priceImpact: reversePriceImpact,
+        buyPrice: reverseBuyPrice,
+      } = reverseActivePoolInstance.calculateOutputAmountAndPriceImpactWithExactInput(
+        "1",
+      );
+      this.logger.warn(
+        `ScenarioSnapshotService.getLatestScenarioSnapshot | Price of Buying 1 ${activePool.assetY.symbol} with ${activePool.assetX.symbol}: ${reverseBuyPrice} ${activePool.assetX.symbol}`,
+      );
+      const poolSnapshot: PoolSnapshot = {
+        assetXSymbol: activePool.assetX.symbol,
+        assetYSymbol: activePool.assetY.symbol,
+        basedAsset: activePool.basedAsset,
+        batchId: activePool.batchId,
+        feeRate: activePool.feeRate,
+        protocolLpAmount: activePool.protocolLpAmount,
+        totalLpSupply: activePool.totalLpSupply,
+        typeHash: activePool.typeHash,
+        poolShare: activePool.poolShare,
+        LPToken: activePool.LPToken,
+        tvl: activePool.tvl,
+        dayTxsCount: activePool.dayTxsCount,
+        dayVolume: activePool.dayVolume,
+        dayApr: activePool.dayApr,
+        unitBuyPrice: buyPrice,
+        unitSellPrice: reverseBuyPrice,
+      };
+      poolSnapshots.push(poolSnapshot);
+      poolInfos.push(activePool);
+    }
+    this.logger.verbose(
+      "ScenarioSnapshotService.getLatestScenarioSnapshot | poolInfo.length",
+      poolInfos.length,
+    );
+    this.logger.verbose(
+      `ScenarioSnapshotService.getLatestScenarioSnapshot | poolSnapshots.length: ${poolSnapshots.length}`,
     );
 
     /* Get WalletStatuses */
-    walletRegistry.forEach((wallet) => {
+    for (const wallet of walletRegistry) {
+      this.logger.verbose(
+        `GetLatestScenarioSnapshot | getting wallet status for wallet ${wallet.address}`,
+      );
       const walletStatus: WalletStatus = {
         address: wallet.address,
-        balances: [],
+        ckbBalance: await getTokenBalance(this.collector, wallet.address),
+        tokenBalances: [],
       };
       /* Enumerate and Get Balances */
-      tokenRegistry.forEach(async (token) => {
-        const type = token.typeScript;
-        walletStatus.balances.push({
-          symbol: token.symbol,
-          balance: await getTokenBalance(this.collector, wallet.address, type),
+      for (const activeToken of activeTokens) {
+        this.logger.verbose(
+          `GetLatestScenarioSnapshot | getting ${activeToken.symbol} balance for wallet ${wallet.address}`,
+        );
+        const balance = await getTokenBalance(
+          this.collector,
+          wallet.address,
+          activeToken.typeScript,
+        );
+        walletStatus.tokenBalances.push({
+          symbol: activeToken.symbol,
+          balance,
         });
-      });
+        this.logger.verbose(
+          `GetLatestScenarioSnapshot | ${activeToken.symbol} balance for wallet ${wallet.address} is ${walletStatus.tokenBalances.slice(-1)[0].balance}`,
+        );
+      }
+      this.logger.verbose(
+        `GetLatestScenarioSnapshot | walletStatus.balances.length: ${walletStatus.tokenBalances.length} for wallet ${wallet.address}`,
+      );
       walletStatuses.push(walletStatus);
-    });
+    }
     this.logger.verbose(
-      "ScenarioSnapshotService.getLatestScenarioSnapshot | walletStatuses",
-      walletStatuses,
-    );
-    this.logger.debug(
-      `ScenarioSnapshotService.getLatestScenarioSnapshot | amount of wallets: ${walletStatuses.length}`,
+      `ScenarioSnapshotService.getLatestScenarioSnapshot | walletStatuses.length: ${walletStatuses.length}`,
     );
 
     /* Finalize */
     const latestScenarioSnapshot: ScenarioSnapshot = {
       timestamp,
-      ScenarioSnapshotStatus: ScenarioSnapshotStatus.Stored,
+      ScenarioSnapshotStatus: ScenarioSnapshotStatus.NotStored,
       walletStatuses,
       poolSnapshots,
       poolInfos,
@@ -165,10 +284,7 @@ export class ScenarioSnapshotService {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    this.logger.debug(
-      "ScenarioSnapshotService.getLatestScenarioSnapshot |",
-      latestScenarioSnapshot,
-    );
+
     return latestScenarioSnapshot;
   }
 
