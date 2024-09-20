@@ -36,18 +36,20 @@ export class CMMWallet implements Wallet {
   name: string;
   icon: string;
   address: string;
-  privateKey: string;
+  // TODO: Support privateKey if necessary.
+  // privateKey?: string;
+  mnemonic: string;
   walletConfig: WalletConfig;
   walletStatus?: WalletStatus;
   constructor(
     address: string,
-    privateKey: string,
+    mnemonic: string,
     name: string,
     walletConfig: WalletConfig,
     walletStatus?: WalletStatus,
   ) {
     this.address = address;
-    this.privateKey = privateKey;
+    this.mnemonic = mnemonic;
     this.name = name;
     this.icon = "Not Using";
     this.walletStatus = walletStatus;

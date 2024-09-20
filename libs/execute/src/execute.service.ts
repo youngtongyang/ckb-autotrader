@@ -9,33 +9,44 @@ import { ccc } from "@ckb-ccc/core";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Client, Collector, Pool } from "@utxoswap/swap-sdk-js";
+import { EntityManager } from "typeorm";
+import { executeTransfer } from "./libs";
 import { ActionRepo } from "./repos";
-import { walletRegistry } from "parameters/walletRegistry.example";
 
 @Injectable()
 export class ExecuteService {
-  private readonly logger = new Logger(ExecuteService.name);
+  readonly logger = new Logger(ExecuteService.name);
   private readonly apiKey = "your api key";
-  private readonly CKBClient: ccc.Client = new ccc.ClientPublicTestnet();
+  readonly CKBClient: ccc.Client = new ccc.ClientPublicTestnet();
   private readonly UTXOSwapClient: Client = new Client(false, this.apiKey);
   private readonly collector: Collector;
   private readonly maxPendingTxs: number;
+  readonly pathPrefix: string;
+  readonly feeRate: number;
   private pools: Pool[] = [];
   private scenarioSnapshots: ScenarioSnapshot[] = [];
 
   constructor(
     configService: ConfigService,
-    private readonly actionRepo: ActionRepo,
+    private readonly entityManager: EntityManager,
+    readonly actionRepo: ActionRepo,
   ) {
     const ckbRpcUrl = configService.get<string>("common.ckb_rpc_url");
     const ckbIndexerUrl = configService.get<string>("common.ckb_indexer_url");
     if (ckbIndexerUrl === undefined) {
       throw Error("Empty ckb_indexer_url");
     }
+    this.pathPrefix = configService.get<string>("hd_path_prefix") ?? "";
     this.CKBClient = configService.get<boolean>("is_mainnet")
       ? new ccc.ClientPublicMainnet({ url: ckbRpcUrl })
       : new ccc.ClientPublicTestnet({ url: ckbRpcUrl });
     this.collector = new Collector({ ckbIndexerUrl });
+    const feeRate = configService.get<number>("fee_rate");
+    if (feeRate === undefined) {
+      throw Error("Empty fee rate");
+    }
+    this.feeRate = feeRate;
+    this.actionRepo = actionRepo;
   }
 
   async executeActions(scenarioSnapshot: ScenarioSnapshot): Promise<void> {
@@ -45,12 +56,19 @@ export class ExecuteService {
       scenarioSnapshot.actionGroupStatus ===
       (ActionGroupStatus.Aborted || ActionGroupStatus.Completed)
     ) {
-      for (const action of scenarioSnapshot.actions) {
+      for (const action of scenarioSnapshot.actions.filter(
+        (action) =>
+          ![
+            ActionStatus.Aborted,
+            ActionStatus.Failed,
+            ActionStatus.Stored,
+          ].includes(action.actionStatus),
+      )) {
         // TODO: This is blocking, should be refactored to be non-blocking
         let status: ActionStatus;
         switch (action.actionType) {
           case ActionType.Transfer:
-            status = await this.executeTransfer(action);
+            status = await executeTransfer(this, action);
             break;
           case ActionType.AddLiquidity:
             status = await this.executeAddLiquidity(action);
@@ -88,28 +106,6 @@ export class ExecuteService {
       }
     }
     return;
-  }
-
-  /* Execution Functions
-   * 1. Can be called repeatedly to try progressing the action;
-   * 2. Should return the output status of the action;
-   * 3. Should be able to abort;
-   */
-  private async executeTransfer(action: Action): Promise<ActionStatus> {
-    //TODO: implement
-    if (action.assetXSymbol != action.assetYSymbol) {
-      throw new Error("AssetX and AssetY must be the same for transfer action");
-    }
-    if (action.actorAddress === action.targetAddress) {
-      throw new Error(
-        "Actor and target addresses must be different for transfer action",
-      );
-    }
-    const actorWallet = walletRegistry.find(
-      (wallet) => wallet.address === action.actorAddress,
-    );
-
-    return ActionStatus.Confirmed;
   }
 
   private async executeAddLiquidity(action: Action): Promise<ActionStatus> {

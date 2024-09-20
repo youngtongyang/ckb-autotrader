@@ -9,23 +9,24 @@ import {
 import { ScenarioSnapshot } from "./scenarioSnapshot.schema";
 
 export enum ActionType {
-  AddLiquidity = 1,
-  RemoveLiquidity = 2,
-  SwapExactInputForOutput = 3,
-  SwapInputForExactOutput = 4,
-  ClaimProtocolLiquidity = 5,
+  AddLiquidity = "AddLiquidity",
+  RemoveLiquidity = "RemoveLiquidity",
+  SwapExactInputForOutput = "SwapExactInputForOutput",
+  SwapInputForExactOutput = "SwapInputForExactOutput",
+  ClaimProtocolLiquidity = "ClaimProtocolLiquidity",
   Transfer = 6,
 }
 
 export enum ActionStatus {
-  Failed = -2,
-  Aborted = -1,
-  NotStarted = 0,
-  IntentCreationPending = 1,
-  IntentCreated = 2,
-  TransferPending = 3,
-  Confirmed = 4,
-  Stored = 5,
+  Failed = "Failed",
+  Aborted = "Aborted",
+  NotStarted = "NotStarted",
+  TxCreated = "TxCreated",
+  IntentCreationSent = "IntentSent",
+  TransferSent = "TransferSent",
+  Committed = "Committed",
+  Confirmed = "Confirmed",
+  Stored = "Stored",
 }
 
 @Entity()
@@ -39,14 +40,16 @@ export class Action {
   @Column({ type: "varchar" })
   actorAddress: string;
 
-  @Column({ type: "varchar" })
-  targetAddress: string;
+  @Column("simple-json")
+  targets: {
+    targetAddress: string;
+    amount: string;
+    assetXSymbol: string;
+    assetYSymbol: string;
+  }[];
 
   @Column({ type: "varchar" })
-  assetXSymbol: string;
-
-  @Column({ type: "varchar" })
-  assetYSymbol: string;
+  rawType: string;
 
   @Column({
     type: "enum",

@@ -1,7 +1,7 @@
 // import { autoRun, foreachInRepo, withTransaction } from "@app/commons";
 // import { CkbTxStatus, ActionGroupStatus, ActionGroup } from "@app/schemas";
 import { ActionRepo } from "@app/execute/repos";
-import { ScenarioSnapshot } from "@app/schemas";
+import { ScenarioSnapshot, WalletStatus } from "@app/schemas";
 import { ccc } from "@ckb-ccc/core";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -58,12 +58,14 @@ export class StrategyService {
 
   /* Entry Function*/
   async generateActions(scenarioSnapshot: ScenarioSnapshot): Promise<void> {
-    this.generateTransferActions(scenarioSnapshot);
+    // NOTE: These are just examples. Feel free to modify them.
+    this.redistributeTokensAcrossWallets(scenarioSnapshot, ["RUSD"]);
     return;
   }
 
-  private async generateTransferActions(
+  private async redistributeTokensAcrossWallets(
     scenarioSnapshot: ScenarioSnapshot,
+    tokenSymbols: string[],
   ): Promise<void> {
     const activeBalanceConfigs: {
       address: string;
@@ -89,7 +91,83 @@ export class StrategyService {
         });
       }
     }
-    // TODO: Implement algorithm for generating transfer actions;
+    const redistributionsReferences: {
+      address: string;
+      tokenSymbol: string;
+      difference: bigint;
+    }[] = [];
+    for (const tokenSymbol of tokenSymbols) {
+      const matchingConfigs = activeBalanceConfigs.filter(
+        (config) => config.balanceConfig.symbol === tokenSymbol,
+      );
+      const walletsInvolved: WalletStatus[] = [];
+      for (const config of matchingConfigs) {
+        const walletStatus = scenarioSnapshot.walletStatuses.find(
+          (walletStatus) => walletStatus.address === config.address,
+        );
+        if (!walletStatus) {
+          this.logger.error(
+            `Wallet ${config.address} not found in scenario snapshot`,
+          );
+          continue;
+        }
+        walletsInvolved.push(walletStatus);
+      }
+      let sumOfTokens: bigint = BigInt(0);
+      for (const walletStatus of walletsInvolved) {
+        const matchingBalance = walletStatus.tokenBalances.find(
+          (balance) => balance.symbol === tokenSymbol,
+        );
+        if (!matchingBalance) {
+          this.logger.error(
+            `Token ${tokenSymbol} not found in wallet ${walletStatus.address}`,
+          );
+          continue;
+        }
+        sumOfTokens += matchingBalance.balance;
+      }
+      let sumOfPortions: number = 0;
+      for (const config of matchingConfigs) {
+        if (config.balanceConfig.portionInStrategy === undefined) {
+          this.logger.error(
+            `Portion in strategy not defined for token ${tokenSymbol} in wallet ${config.address}`,
+          );
+          continue;
+        }
+        sumOfPortions += config.balanceConfig.portionInStrategy;
+      }
+      for (const config of matchingConfigs) {
+        if (config.balanceConfig.portionInStrategy === undefined) {
+          this.logger.error(
+            `Portion in strategy not defined for token ${tokenSymbol} in wallet ${config.address}`,
+          );
+          continue;
+        }
+        const portion = config.balanceConfig.portionInStrategy;
+        const tokensToRedistribute =
+          (sumOfTokens * BigInt(portion)) / BigInt(sumOfPortions);
+        const matchingBalance = walletsInvolved
+          .find((walletStatus) => walletStatus.address === config.address)
+          ?.tokenBalances.find((balance) => balance.symbol === tokenSymbol);
+        if (!matchingBalance) {
+          this.logger.error(
+            `Token ${tokenSymbol} not found in wallet ${config.address}`,
+          );
+          continue;
+        }
+        const difference = tokensToRedistribute - matchingBalance.balance;
+        if (difference === BigInt(0)) {
+          // TODO: Implement tolerance
+          continue;
+        }
+        redistributionsReferences.push({
+          address: config.address,
+          tokenSymbol,
+          difference,
+        });
+      }
+    }
+    // TODO: Implement redistribution
     return;
   }
 
