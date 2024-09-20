@@ -314,16 +314,16 @@ export class StrategyService {
     }
 
     for (const tokenSymbol of tokenSymbols) {
-      const matchingRedistrbutionReferences = redistributionsReferences.filter(
+      const matchingRedistributionReferences = redistributionsReferences.filter(
         (reference) => reference.tokenSymbol === tokenSymbol,
       );
       // Recursively, try to take from the wallet that is giving out the most and give to the wallet that is receiving the most.
       // This is a naive approach and can be improved.
-      while (matchingRedistrbutionReferences.length > 0) {
-        const maxGiver = matchingRedistrbutionReferences.reduce((prev, curr) =>
-          prev.difference > curr.difference ? prev : curr,
+      while (matchingRedistributionReferences.length > 0) {
+        const maxGiver = matchingRedistributionReferences.reduce(
+          (prev, curr) => (prev.difference > curr.difference ? prev : curr),
         );
-        const maxReceiver = matchingRedistrbutionReferences.reduce(
+        const maxReceiver = matchingRedistributionReferences.reduce(
           (prev, curr) => (prev.difference < curr.difference ? prev : curr),
         );
         if (maxGiver.difference === 0 || maxReceiver.difference === 0) {
