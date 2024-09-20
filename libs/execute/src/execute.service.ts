@@ -10,7 +10,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Client, Collector, Pool } from "@utxoswap/swap-sdk-js";
 import { EntityManager } from "typeorm";
-import { executeTransfer } from "./libs";
+import { executeSwap, executeTransfer } from "./libs";
 import { ActionRepo } from "./repos";
 
 @Injectable()
@@ -18,11 +18,12 @@ export class ExecuteService {
   readonly logger = new Logger(ExecuteService.name);
   private readonly apiKey = "your api key";
   readonly CKBClient: ccc.Client = new ccc.ClientPublicTestnet();
-  private readonly UTXOSwapClient: Client = new Client(false, this.apiKey);
+  readonly UTXOSwapClient: Client = new Client(false, this.apiKey);
   private readonly collector: Collector;
   private readonly maxPendingTxs: number;
   readonly pathPrefix: string;
   readonly feeRate: number;
+  readonly slippage: string;
   private pools: Pool[] = [];
   private scenarioSnapshots: ScenarioSnapshot[] = [];
 
@@ -46,6 +47,11 @@ export class ExecuteService {
       throw Error("Empty fee rate");
     }
     this.feeRate = feeRate;
+    const slippage = configService.get<string>("execute.slippage");
+    if (slippage === undefined) {
+      throw Error("Empty slippage");
+    }
+    this.slippage = slippage;
     this.actionRepo = actionRepo;
   }
 
@@ -69,6 +75,30 @@ export class ExecuteService {
         switch (action.actionType) {
           case ActionType.Transfer:
             status = await executeTransfer(this, action);
+            break;
+          case ActionType.Swap:
+            const matchingPoolInfo = scenarioSnapshot.poolInfos.find(
+              (poolInfo) =>
+                poolInfo.assetY.symbol === "CKB" &&
+                poolInfo.assetX.symbol === action.targets[0].assetXSymbol,
+            );
+            if (!matchingPoolInfo) {
+              action.actionStatus = ActionStatus.Failed;
+              throw new Error("No matching pool found");
+            }
+            const matchingPool = new Pool({
+              tokens: [matchingPoolInfo!.assetX, matchingPoolInfo!.assetY],
+              ckbAddress: action.actorAddress,
+              collector: this.collector,
+              client: this.UTXOSwapClient,
+              poolInfo: matchingPoolInfo,
+            });
+            status = await executeSwap(
+              this,
+              action,
+              matchingPool,
+              this.slippage,
+            );
             break;
           case ActionType.AddLiquidity:
             status = await this.executeAddLiquidity(action);

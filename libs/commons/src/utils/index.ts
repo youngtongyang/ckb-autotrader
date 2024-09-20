@@ -1,3 +1,4 @@
+import { ccc } from "@ckb-ccc/core";
 import { addressToScript, hexToBytes } from "@nervosnetwork/ckb-sdk-utils";
 import { Logger } from "@nestjs/common";
 import { Collector } from "@utxoswap/swap-sdk-js";
@@ -88,3 +89,52 @@ export const getTokenBalance = async (
 
   return sumTokenAmount;
 };
+
+export function bigint2Hex(num: bigint): string {
+  return append0x(num.toString(16));
+}
+
+export function transactionFormatter(
+  transaction: ccc.Transaction,
+): CKBComponents.RawTransaction {
+  const {
+    version,
+    cellDeps,
+    headerDeps,
+    inputs,
+    outputs,
+    outputsData,
+    witnesses,
+  } = transaction;
+  return {
+    version: bigint2Hex(version),
+    cellDeps: cellDeps.map((cell) => {
+      return {
+        outPoint: {
+          txHash: cell.outPoint.txHash,
+          index: bigint2Hex(cell.outPoint.index),
+        },
+        depType: cell.depType,
+      };
+    }),
+    headerDeps,
+    inputs: inputs.map((input) => {
+      return {
+        previousOutput: {
+          index: bigint2Hex(input.previousOutput.index),
+          txHash: input.previousOutput.txHash,
+        },
+        since: bigint2Hex(input.since),
+      };
+    }),
+    outputs: outputs.map((output) => {
+      return {
+        capacity: bigint2Hex(output.capacity),
+        lock: output.lock,
+        type: output.type,
+      };
+    }),
+    outputsData: outputsData,
+    witnesses,
+  };
+}

@@ -4,4 +4,5 @@
  * 3. Should be able to abort;
  */
 
+export * from "./executeSwap";
 export * from "./executeTransfer";
