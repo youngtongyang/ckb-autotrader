@@ -36,7 +36,7 @@ export class Action {
   actionID: number;
 
   @Column(() => ScenarioSnapshot)
-  scenarioSnapshotTimestamp: ScenarioSnapshot;
+  scenarioSnapshot: ScenarioSnapshot;
 
   @Column({ type: "varchar" })
   actorAddress: string;

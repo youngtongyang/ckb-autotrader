@@ -20,7 +20,7 @@ import {
 import { Axios } from "axios";
 import { CMMWallet } from "parameters";
 import { activeTokenRegistry } from "parameters/tokenRegistry";
-import { walletRegistry } from "parameters/walletRegistry.example";
+import { walletRegistry } from "parameters/walletRegistry";
 import { EntityManager } from "typeorm";
 import {
   ActionGroupStatus,
@@ -82,11 +82,11 @@ export class ScenarioSnapshotService {
   async main(): Promise<void> {
     this.logger.debug("ScenarioSnapshotService.main | started");
     const latestScenarioSnapshot = await this.getLatestScenarioSnapshot();
-    // this.strategyService.generateActions(latestScenarioSnapshot);
+    await this.briefReportOfLatestScenarioSnapshot(latestScenarioSnapshot);
+    await this.strategyService.generateActions(latestScenarioSnapshot);
     // this.executeService.executeActions(latestScenarioSnapshot);
     // this.finalizeScenarioSnapshot(latestScenarioSnapshot);
     // this.scenarioSnapshotRepo.syncScenarioSnapshot(latestScenarioSnapshot);
-    await this.briefReportOfLatestScenarioSnapshot(latestScenarioSnapshot);
   }
 
   async briefReportOfLatestScenarioSnapshot(
@@ -106,9 +106,6 @@ export class ScenarioSnapshotService {
     for (const walletStatus of latestScenarioSnapshot.walletStatuses) {
       this.logger.log(
         `ScenarioSnapshotService.briefReportOfLatestScenarioSnapshot | == Wallet ${walletStatus.address}`,
-      );
-      this.logger.log(
-        `ScenarioSnapshotService.briefReportOfLatestScenarioSnapshot | ==== CKB: ${walletStatus.ckbBalance}`,
       );
       walletStatus.tokenBalances.forEach((balance) => {
         this.logger.log(
@@ -241,8 +238,12 @@ export class ScenarioSnapshotService {
       );
       const walletStatus: WalletStatus = {
         address: wallet.address,
-        ckbBalance: await getTokenBalance(this.collector, wallet.address),
-        tokenBalances: [],
+        tokenBalances: [
+          {
+            symbol: "CKB",
+            balance: await getTokenBalance(this.collector, wallet.address),
+          },
+        ],
       };
       /* Enumerate and Get Balances */
       for (const activeToken of activeTokens) {

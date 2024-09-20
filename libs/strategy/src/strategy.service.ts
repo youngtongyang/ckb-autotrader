@@ -1,7 +1,12 @@
 // import { autoRun, foreachInRepo, withTransaction } from "@app/commons";
 // import { CkbTxStatus, ActionGroupStatus, ActionGroup } from "@app/schemas";
 import { ActionRepo } from "@app/execute/repos";
-import { ScenarioSnapshot, WalletStatus } from "@app/schemas";
+import {
+  ActionStatus,
+  ActionType,
+  ScenarioSnapshot,
+  WalletStatus,
+} from "@app/schemas";
 import { ccc } from "@ckb-ccc/core";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -9,7 +14,7 @@ import { HDKey } from "@scure/bip32";
 import { mnemonicToSeedSync } from "@scure/bip39";
 import axios, { Axios } from "axios";
 import { BalanceConfig, Strategy } from "parameters";
-import { walletRegistry } from "parameters/walletRegistry.example";
+import { walletRegistry } from "parameters/walletRegistry";
 
 @Injectable()
 export class StrategyService {
@@ -59,11 +64,11 @@ export class StrategyService {
   /* Entry Function*/
   async generateActions(scenarioSnapshot: ScenarioSnapshot): Promise<void> {
     // NOTE: These are just examples. Feel free to modify them.
-    this.redistributeTokensAcrossWallets(scenarioSnapshot, ["RUSD"]);
-    this.redistributeTokensWithinWallet(
-      scenarioSnapshot,
-      scenarioSnapshot.walletStatuses[0],
-    );
+    this.redistributeTokensAcrossWallets(scenarioSnapshot, ["CKB", "RUSD"]);
+    // this.redistributeTokensWithinWallet(
+    //   scenarioSnapshot,
+    //   scenarioSnapshot.walletStatuses[0],
+    // );
     return;
   }
 
@@ -228,7 +233,7 @@ export class StrategyService {
     const redistributionsReferences: {
       address: string;
       tokenSymbol: string;
-      difference: bigint;
+      difference: number;
     }[] = [];
     for (const tokenSymbol of tokenSymbols) {
       const matchingConfigs = activeBalanceConfigs.filter(
@@ -273,24 +278,23 @@ export class StrategyService {
       for (const config of matchingConfigs) {
         if (config.balanceConfig.portionInStrategy === undefined) {
           this.logger.error(
-            `Portion in strategy not defined for token ${tokenSymbol} in wallet ${config.address}`,
+            `redistributeTokensAcrossWallets | Portion in strategy not defined for token ${tokenSymbol} in wallet ${config.address}`,
           );
           continue;
         }
         const portion = config.balanceConfig.portionInStrategy;
-        const targetBalance =
-          (sumOfTokens * BigInt(portion)) / BigInt(sumOfPortions);
+        const targetBalance = (Number(sumOfTokens) * portion) / sumOfPortions;
         const matchingBalance = walletsInvolved
           .find((walletStatus) => walletStatus.address === config.address)
           ?.tokenBalances.find((balance) => balance.symbol === tokenSymbol);
         if (!matchingBalance) {
           this.logger.error(
-            `Token ${tokenSymbol} not found in wallet ${config.address}`,
+            `redistributeTokensAcrossWallets | Token ${tokenSymbol} not found in wallet ${config.address}`,
           );
           continue;
         }
-        const difference = targetBalance - matchingBalance.balance;
-        if (difference === BigInt(0)) {
+        const difference = targetBalance - Number(matchingBalance.balance);
+        if (difference === 0) {
           // TODO: Implement tolerance
           continue;
         }
@@ -302,7 +306,89 @@ export class StrategyService {
       }
     }
     // TODO: Implement redistribution
-    return;
+    this.logger.debug("Redistribution References:");
+    for (const reference of redistributionsReferences) {
+      this.logger.debug(
+        `Address: ${reference.address}, Token: ${reference.tokenSymbol}, Difference: ${reference.difference}`,
+      );
+    }
+
+    for (const tokenSymbol of tokenSymbols) {
+      const matchingRedistrbutionReferences = redistributionsReferences.filter(
+        (reference) => reference.tokenSymbol === tokenSymbol,
+      );
+      // Recursively, try to take from the wallet that is giving out the most and give to the wallet that is receiving the most.
+      // This is a naive approach and can be improved.
+      while (matchingRedistrbutionReferences.length > 0) {
+        const maxGiver = matchingRedistrbutionReferences.reduce((prev, curr) =>
+          prev.difference > curr.difference ? prev : curr,
+        );
+        const maxReceiver = matchingRedistrbutionReferences.reduce(
+          (prev, curr) => (prev.difference < curr.difference ? prev : curr),
+        );
+        if (maxGiver.difference === 0 || maxReceiver.difference === 0) {
+          break;
+        }
+        const amountToTransfer = Math.min(
+          Math.abs(maxGiver.difference),
+          Math.abs(maxReceiver.difference),
+        );
+        const matchingAction = scenarioSnapshot.actions.find(
+          (action) => action.actorAddress === maxGiver.address,
+        );
+        if (!matchingAction) {
+          const newAction = this.actionRepo.create({
+            scenarioSnapshot: scenarioSnapshot,
+            actorAddress: maxGiver.address,
+            targets: [
+              {
+                targetAddress: maxReceiver.address,
+                amount: amountToTransfer.toString(),
+                assetXSymbol: tokenSymbol,
+                assetYSymbol: tokenSymbol,
+              },
+            ],
+            actionType: ActionType.Transfer,
+            actionStatus: ActionStatus.NotStarted,
+          });
+          scenarioSnapshot.actions.push(newAction);
+        } else {
+          matchingAction.targets.push({
+            targetAddress: maxReceiver.address,
+            amount: amountToTransfer.toString(),
+            assetXSymbol: tokenSymbol,
+            assetYSymbol: tokenSymbol,
+          });
+        }
+        // Drop the giver and receiver from the list if difference has been reduced to 0
+        maxGiver.difference -= amountToTransfer;
+        maxReceiver.difference += amountToTransfer;
+        if (maxGiver.difference === 0) {
+          redistributionsReferences.splice(
+            redistributionsReferences.findIndex(
+              (reference) =>
+                reference.address === maxGiver.address &&
+                reference.tokenSymbol === tokenSymbol,
+            ),
+            1,
+          );
+        }
+        if (maxReceiver.difference === 0) {
+          redistributionsReferences.splice(
+            redistributionsReferences.findIndex(
+              (reference) =>
+                reference.address === maxReceiver.address &&
+                reference.tokenSymbol === tokenSymbol,
+            ),
+            1,
+          );
+        }
+        this.logger.debug(
+          `Transferring ${amountToTransfer} ${tokenSymbol} from ${maxGiver.address} to ${maxReceiver.address}`,
+        );
+      }
+      return;
+    }
   }
 
   /* Other Strategy-related Functions */

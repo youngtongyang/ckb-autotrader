@@ -27,9 +27,6 @@ export class WalletStatus {
   @Column({ type: "varchar" })
   address: string;
 
-  @Column()
-  ckbBalance: bigint;
-
   @Column("simple-json")
   tokenBalances: { symbol: string; balance: bigint }[];
 }
@@ -83,7 +80,7 @@ export class ScenarioSnapshot {
   @Column()
   ScenarioSnapshotStatus: ScenarioSnapshotStatus;
 
-  @OneToMany(() => Action, (action) => action.scenarioSnapshotTimestamp)
+  @OneToMany(() => Action, (action) => action.scenarioSnapshot)
   actions: Action[];
 
   @Column({
