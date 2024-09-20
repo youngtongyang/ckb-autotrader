@@ -60,6 +60,140 @@ export class StrategyService {
   async generateActions(scenarioSnapshot: ScenarioSnapshot): Promise<void> {
     // NOTE: These are just examples. Feel free to modify them.
     this.redistributeTokensAcrossWallets(scenarioSnapshot, ["RUSD"]);
+    this.redistributeTokensWithinWallet(
+      scenarioSnapshot,
+      scenarioSnapshot.walletStatuses[0],
+    );
+    return;
+  }
+
+  private async redistributeTokensWithinWallet(
+    scenarioSnapshot: ScenarioSnapshot,
+    targetWalletStatus: WalletStatus,
+  ): Promise<void> {
+    const activeBalanceConfigs: {
+      address: string;
+      balanceConfig: BalanceConfig;
+    }[] = [];
+    const matchingWallet = walletRegistry.find(
+      (wallet) => wallet.address === targetWalletStatus.address,
+    );
+    if (!matchingWallet) {
+      this.logger.error(
+        `Strategy.redistributeTokensWithinWallet | Wallet ${targetWalletStatus.address} not found in wallet registry`,
+      );
+      throw Error(
+        `Strategy.redistributeTokensWithinWallet | Wallet ${targetWalletStatus.address} not found in wallet registry`,
+      );
+    }
+    if (matchingWallet.walletConfig.balanceConfig === undefined) {
+      this.logger.warn(
+        `Strategy.redistributeTokensWithinWallet | Wallet ${targetWalletStatus.address} has no balanceConfig`,
+      );
+      return;
+    }
+    for (const balanceConfig of matchingWallet.walletConfig.balanceConfig) {
+      activeBalanceConfigs.push({
+        address: targetWalletStatus.address,
+        balanceConfig,
+      });
+    }
+
+    const redistributionsReferences: {
+      address: string;
+      tokenSymbol: string;
+      difference: bigint;
+    }[] = [];
+
+    let sumOfTokenValuesInCKB: bigint = BigInt(0);
+    for (const config of activeBalanceConfigs) {
+      const matchingBalance = targetWalletStatus.tokenBalances.find(
+        (balance) => balance.symbol === config.balanceConfig.symbol,
+      );
+      if (!matchingBalance) {
+        this.logger.error(
+          `Strategy.redistributeTokensWithinWallet | Token ${config.balanceConfig.symbol} not found in wallet ${targetWalletStatus.address}`,
+        );
+        throw Error(
+          `Strategy.redistributeTokensWithinWallet | Token ${config.balanceConfig.symbol} not found in wallet ${targetWalletStatus.address}`,
+        );
+      }
+      const matchingPoolSnapshot = scenarioSnapshot.poolSnapshots.find(
+        (poolSnapshot) =>
+          poolSnapshot.assetYSymbol === "CKB" &&
+          poolSnapshot.assetXSymbol === config.balanceConfig.symbol,
+      );
+      if (!matchingPoolSnapshot) {
+        this.logger.error(
+          `Strategy.redistributeTokensWithinWallet | Pool snapshot not found for token ${config.balanceConfig.symbol}`,
+        );
+        throw Error(
+          `Strategy.redistributeTokensWithinWallet | Pool snapshot not found for token ${config.balanceConfig.symbol}`,
+        );
+      }
+      sumOfTokenValuesInCKB =
+        matchingBalance.balance * BigInt(matchingPoolSnapshot.unitSellPrice);
+    }
+
+    let sumOfPortions: number = 0;
+    for (const config of activeBalanceConfigs) {
+      if (config.balanceConfig.portionInStrategy === undefined) {
+        this.logger.error(
+          `Portion in strategy not defined for token ${config.balanceConfig.symbol} in wallet ${config.address}`,
+        );
+        continue;
+      }
+      sumOfPortions += config.balanceConfig.portionInStrategy;
+    }
+
+    for (const config of activeBalanceConfigs) {
+      if (config.balanceConfig.portionInStrategy === undefined) {
+        this.logger.error(
+          `Portion in strategy not defined for token ${config.balanceConfig.symbol} in wallet ${config.address}`,
+        );
+        continue;
+      }
+      const portion = config.balanceConfig.portionInStrategy;
+      const matchingPoolSnapshot = scenarioSnapshot.poolSnapshots.find(
+        (poolSnapshot) =>
+          poolSnapshot.assetYSymbol === "CKB" &&
+          poolSnapshot.assetXSymbol === config.balanceConfig.symbol,
+      );
+      if (!matchingPoolSnapshot) {
+        this.logger.error(
+          `Strategy.redistributeTokensWithinWallet | Pool snapshot not found for token ${config.balanceConfig.symbol}`,
+        );
+        throw Error(
+          `Strategy.redistributeTokensWithinWallet | Pool snapshot not found for token ${config.balanceConfig.symbol}`,
+        );
+      }
+      const targetBalance =
+        (sumOfTokenValuesInCKB * BigInt(portion)) /
+        BigInt(sumOfPortions) /
+        BigInt(matchingPoolSnapshot.unitSellPrice);
+      const matchingBalance = targetWalletStatus.tokenBalances.find(
+        (balance) => balance.symbol === config.balanceConfig.symbol,
+      );
+      if (!matchingBalance) {
+        this.logger.error(
+          `Strategy.redistributeTokensWithinWallet | Token ${config.balanceConfig.symbol} not found in wallet ${config.address}`,
+        );
+        throw Error(
+          `Strategy.redistributeTokensWithinWallet | Token ${config.balanceConfig.symbol} not found in wallet ${config.address}`,
+        );
+      }
+      const difference = targetBalance - matchingBalance.balance;
+      if (difference === BigInt(0)) {
+        // TODO: Implement tolerance
+        continue;
+      }
+      redistributionsReferences.push({
+        address: config.address,
+        tokenSymbol: config.balanceConfig.symbol,
+        difference,
+      });
+    }
+    // TODO: Implement redistribution
     return;
   }
 
@@ -144,7 +278,7 @@ export class StrategyService {
           continue;
         }
         const portion = config.balanceConfig.portionInStrategy;
-        const tokensToRedistribute =
+        const targetBalance =
           (sumOfTokens * BigInt(portion)) / BigInt(sumOfPortions);
         const matchingBalance = walletsInvolved
           .find((walletStatus) => walletStatus.address === config.address)
@@ -155,7 +289,7 @@ export class StrategyService {
           );
           continue;
         }
-        const difference = tokensToRedistribute - matchingBalance.balance;
+        const difference = targetBalance - matchingBalance.balance;
         if (difference === BigInt(0)) {
           // TODO: Implement tolerance
           continue;
