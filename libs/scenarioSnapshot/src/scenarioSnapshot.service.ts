@@ -93,26 +93,23 @@ export class ScenarioSnapshotService {
     latestScenarioSnapshot: ScenarioSnapshot,
   ): Promise<void> {
     this.logger.log(
-      `ScenarioSnapshotService.briefReportOfLatestScenarioSnapshot | poolSnapshots.length: ${latestScenarioSnapshot.poolSnapshots.length}`,
+      `briefReportOfLatestScenarioSnapshot | poolSnapshots.length: ${latestScenarioSnapshot.poolSnapshots.length}`,
     );
     for (const poolSnapshot of latestScenarioSnapshot.poolSnapshots) {
       this.logger.log(
-        `ScenarioSnapshotService.briefReportOfLatestScenarioSnapshot | == Pool ${poolSnapshot.assetYSymbol}/${poolSnapshot.assetXSymbol}  UnitBuyPrice:${poolSnapshot.unitBuyPrice} UnitSellPrice:${poolSnapshot.unitSellPrice}`,
+        `== Pool ${poolSnapshot.assetYSymbol}/${poolSnapshot.assetXSymbol}  UnitBuyPrice:${poolSnapshot.unitBuyPrice} UnitSellPrice:${poolSnapshot.unitSellPrice}`,
       );
     }
-    this.logger.log(
-      `ScenarioSnapshotService.briefReportOfLatestScenarioSnapshot | ${latestScenarioSnapshot.walletStatuses.length} wallets`,
-    );
+    this.logger.log(`${latestScenarioSnapshot.walletStatuses.length} wallets`);
     for (const walletStatus of latestScenarioSnapshot.walletStatuses) {
-      this.logger.log(
-        `ScenarioSnapshotService.briefReportOfLatestScenarioSnapshot | == Wallet ${walletStatus.address}`,
-      );
+      this.logger.log(`== Wallet ${walletStatus.address}`);
       walletStatus.tokenBalances.forEach((balance) => {
         this.logger.log(
           `ScenarioSnapshotService.briefReportOfLatestScenarioSnapshot | ==== ${balance.symbol}: ${balance.balance}`,
         );
       });
     }
+    // TODO: Report on actions to take.
   }
 
   async getLatestScenarioSnapshot(): Promise<ScenarioSnapshot> {

@@ -277,13 +277,13 @@ export async function redistributeTokensWithinWallet(
   /* redistributeTokensWithinWallet | Generate actions based on redistribution references */
   while (redistributionsReferences.length > 0) {
     const maxGiver = redistributionsReferences.reduce((prev, curr) =>
-      Number(prev.difference) * prev.priceInCKB >
+      Number(prev.difference) * prev.priceInCKB <
       Number(curr.difference) * curr.priceInCKB
         ? prev
         : curr,
     );
     const maxReceiver = redistributionsReferences.reduce((prev, curr) =>
-      Number(prev.difference) * prev.priceInCKB <
+      Number(prev.difference) * prev.priceInCKB >
       Number(curr.difference) * curr.priceInCKB
         ? prev
         : curr,
@@ -363,7 +363,7 @@ export async function redistributeTokensWithinWallet(
       );
     }
     strategyService.logger.debug(
-      `redistributeTokensAcrossWallets | Swap ${amountToSwap} ${maxGiver.tokenSymbol} from ${maxGiver.address} to ${maxReceiver.address}`,
+      `redistributeTokensAcrossWallets | Swap ${amountToSwap} ${maxGiver.tokenSymbol} into ${amountInCKBToSwap / maxReceiver.priceInCKB} ${maxReceiver.tokenSymbol} from ${maxGiver.address} to ${maxReceiver.address}`,
     );
   }
   return;

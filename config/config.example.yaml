@@ -5,7 +5,7 @@ hd_path_prefix: m/44'/309'/0'/0/
 fee_rate: 1000
 
 is_mainnet: false
-debug_mode: true
+log_level: debug
 
 common:
   ckb_rpc_url: wss://testnet.ckb.dev/ws
