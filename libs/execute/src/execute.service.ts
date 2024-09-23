@@ -58,6 +58,12 @@ export class ExecuteService {
   async executeActions(scenarioSnapshot: ScenarioSnapshot): Promise<void> {
     // NOTE: This function is designed to be blocking.
     // TODO: Abort by timer;
+    this.logger.verbose("executeActions | Actions in scenarioSnapshot: ");
+    for (const action of scenarioSnapshot.actions) {
+      this.logger.verbose(
+        `executeActions | Action #${action.actionID} | ${action.actionType} | ${action.actionStatus}`,
+      );
+    }
     while (
       scenarioSnapshot.actionGroupStatus ===
       (ActionGroupStatus.Aborted || ActionGroupStatus.Completed)

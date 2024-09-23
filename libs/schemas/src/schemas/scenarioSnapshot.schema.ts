@@ -71,8 +71,6 @@ export class ScenarioSnapshot {
   @PrimaryColumn()
   timestamp: number;
 
-  // flags: ScenarioSnapshotFlags;
-
   // TODO: Seems missing
   // @Column()
   // blockHeight: number;
@@ -96,13 +94,19 @@ export class ScenarioSnapshot {
   @Column("simple-json") // Serializable version of poolInfos
   poolSnapshots: PoolSnapshot[];
 
-  poolInfos: PoolInfo[];
-
   @CreateDateColumn()
   createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  /* Fields for buffering calculations only */
+  poolInfos: PoolInfo[];
+  pendingBalanceChanges: {
+    symbol: string;
+    address: string;
+    balanceChange: number;
+  }[];
 }
 
 // class ScenarioSnapshotFlags {

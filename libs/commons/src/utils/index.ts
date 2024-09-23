@@ -138,3 +138,23 @@ export function transactionFormatter(
     witnesses,
   };
 }
+
+export function compareWithTolerance(
+  a: number,
+  b: number,
+  tolerancePercentage: number = 0.5,
+  absoluteTolerance: number = 10 ** 9,
+) {
+  const difference = Math.abs(a - b);
+  if (difference <= absoluteTolerance) {
+    return true;
+  } else {
+    if (a === 0 && b === 0) {
+      return true;
+    } else if (a === 0 || b === 0) {
+      return false;
+    } else {
+      return difference <= Math.abs(Math.min(a, b) * tolerancePercentage) / 100;
+    }
+  }
+}

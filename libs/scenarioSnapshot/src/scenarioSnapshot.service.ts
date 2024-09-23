@@ -163,7 +163,12 @@ export class ScenarioSnapshotService {
           ["CKB", ...activeTokenRegistry].includes(
             additionalPool.assetX.symbol,
           ) &&
-          ["CKB", ...activeTokenRegistry].includes(additionalPool.assetY.symbol)
+          ["CKB", ...activeTokenRegistry].includes(
+            additionalPool.assetY.symbol,
+          ) &&
+          activePools.every(
+            (activePool) => activePool.typeHash !== additionalPool.typeHash,
+          )
         ) {
           activePools.push(additionalPool);
         }
@@ -283,6 +288,7 @@ export class ScenarioSnapshotService {
       actionGroupStatus: ActionGroupStatus.NotStarted,
       createdAt: new Date(),
       updatedAt: new Date(),
+      pendingBalanceChanges: [],
     };
 
     return latestScenarioSnapshot;
