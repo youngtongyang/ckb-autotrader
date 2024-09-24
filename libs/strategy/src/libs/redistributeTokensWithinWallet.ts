@@ -294,7 +294,7 @@ export async function redistributeTokensWithinWallet(
     }
     const amountInCKBToSwap = Math.min(
       Math.abs(Number(maxGiver.difference) * maxGiver.priceInCKB),
-      Math.abs(Number(maxReceiver.difference) * maxGiver.priceInCKB),
+      Math.abs(Number(maxReceiver.difference) * maxReceiver.priceInCKB),
     );
     const amountToSwap = Math.floor(amountInCKBToSwap / maxGiver.priceInCKB);
 
@@ -338,11 +338,11 @@ export async function redistributeTokensWithinWallet(
       balanceChange: amountInCKBToSwap / maxReceiver.priceInCKB,
     });
     // Drop the giver and receiver from the list if difference has been reduced to 0
-    maxGiver.difference -= amountToSwap;
-    maxReceiver.difference += Math.floor(
+    maxGiver.difference += amountInCKBToSwap;
+    maxReceiver.difference -= Math.floor(
       amountInCKBToSwap / maxReceiver.priceInCKB,
     );
-    if (compareWithTolerance(maxGiver.difference, 0)) {
+    if (compareWithTolerance(maxGiver.difference, 0, undefined, 10 ** 10)) {
       redistributionsReferences.splice(
         redistributionsReferences.findIndex(
           (reference) =>
@@ -352,7 +352,7 @@ export async function redistributeTokensWithinWallet(
         1,
       );
     }
-    if (compareWithTolerance(maxReceiver.difference, 0)) {
+    if (compareWithTolerance(maxReceiver.difference, 0, undefined, 10 ** 10)) {
       redistributionsReferences.splice(
         redistributionsReferences.findIndex(
           (reference) =>
