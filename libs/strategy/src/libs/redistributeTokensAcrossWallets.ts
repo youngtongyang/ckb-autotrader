@@ -166,14 +166,18 @@ export async function redistributeTokensAcrossWallets(
     );
     /* redistributeTokensAcrossWallets | Generate actions based on redistribution references */
     // Note: Recursively, try to take from the wallet that is giving out the most and give to the wallet that is receiving the most. This is a naive approach and can be improved.
-    while (matchingRedistributionReferences.length > 0) {
+    while (matchingRedistributionReferences.length > 1) {
       const maxGiver = matchingRedistributionReferences.reduce((prev, curr) =>
         prev.difference < curr.difference ? prev : curr,
       );
       const maxReceiver = matchingRedistributionReferences.reduce(
         (prev, curr) => (prev.difference > curr.difference ? prev : curr),
       );
-      if (maxGiver.difference === 0 || maxReceiver.difference === 0) {
+      // TODO: Compare with value in CKB
+      if (
+        compareWithTolerance(maxGiver.difference, 0, undefined, 10 ** 7) ||
+        compareWithTolerance(maxReceiver.difference, 0, undefined, 10 ** 7)
+      ) {
         break;
       }
       const amountToTransfer = Math.floor(
@@ -230,7 +234,7 @@ export async function redistributeTokensAcrossWallets(
       // Drop the giver and receiver from the list if difference has been reduced to 0
       maxGiver.difference += amountToTransfer;
       maxReceiver.difference -= amountToTransfer;
-      if (compareWithTolerance(maxGiver.difference, 0, undefined, 10 ** 8)) {
+      if (compareWithTolerance(maxGiver.difference, 0, undefined, 10 ** 7)) {
         redistributionReferences.splice(
           redistributionReferences.findIndex(
             (reference) =>
@@ -240,7 +244,7 @@ export async function redistributeTokensAcrossWallets(
           1,
         );
         matchingRedistributionReferences.splice(
-          redistributionReferences.findIndex(
+          matchingRedistributionReferences.findIndex(
             (reference) =>
               reference.address === maxGiver.address &&
               reference.tokenSymbol === tokenSymbol,
@@ -248,9 +252,7 @@ export async function redistributeTokensAcrossWallets(
           1,
         );
       }
-      if (
-        compareWithTolerance(maxReceiver.difference, 0, undefined, 10 ** 10)
-      ) {
+      if (compareWithTolerance(maxReceiver.difference, 0, undefined, 10 ** 7)) {
         redistributionReferences.splice(
           redistributionReferences.findIndex(
             (reference) =>
@@ -260,7 +262,7 @@ export async function redistributeTokensAcrossWallets(
           1,
         );
         matchingRedistributionReferences.splice(
-          redistributionReferences.findIndex(
+          matchingRedistributionReferences.findIndex(
             (reference) =>
               reference.address === maxReceiver.address &&
               reference.tokenSymbol === tokenSymbol,
