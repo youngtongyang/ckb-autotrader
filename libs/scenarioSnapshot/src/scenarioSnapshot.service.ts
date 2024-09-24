@@ -84,7 +84,7 @@ export class ScenarioSnapshotService {
     const latestScenarioSnapshot = await this.getLatestScenarioSnapshot();
     await this.briefReportOfLatestScenarioSnapshot(latestScenarioSnapshot);
     await this.strategyService.generateActions(latestScenarioSnapshot);
-    // this.executeService.executeActions(latestScenarioSnapshot);
+    this.executeService.executeActions(latestScenarioSnapshot);
     // this.finalizeScenarioSnapshot(latestScenarioSnapshot);
     // this.scenarioSnapshotRepo.syncScenarioSnapshot(latestScenarioSnapshot);
   }
@@ -274,7 +274,7 @@ export class ScenarioSnapshotService {
       `ScenarioSnapshotService.getLatestScenarioSnapshot | walletStatuses.length: ${walletStatuses.length}`,
     );
 
-    /* Finalize */
+    /* Assemble */
     const latestScenarioSnapshot: ScenarioSnapshot = {
       timestamp,
       ScenarioSnapshotStatus: ScenarioSnapshotStatus.NotStored,

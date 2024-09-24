@@ -1,8 +1,6 @@
 import { transactionFormatter } from "@app/commons";
 import { Action, ActionStatus } from "@app/schemas";
 import { ccc, TransactionLike } from "@ckb-ccc/core";
-import { HDKey } from "@scure/bip32";
-import { mnemonicToSeedSync } from "@scure/bip39";
 import { Pool } from "@utxoswap/swap-sdk-js";
 import { walletRegistry } from "parameters/walletRegistry";
 import { ExecuteService } from "..";
@@ -14,23 +12,19 @@ export async function executeSwap(
   slippage: string,
 ): Promise<ActionStatus> {
   // TODO: Limiting swapping to only one token per action for now. Might implement multiple token swaps in one action in the future.
-  if (pool.tokens[1].symbol !== "CKB") {
-    action.actionStatus = ActionStatus.Failed;
-    throw new Error("Only CKB to Token swap is supported for now");
-  }
   if (action.actionStatus === ActionStatus.NotStarted) {
     try {
       for (const target of action.targets) {
-        if (target.assetXSymbol !== target.assetYSymbol) {
+        if (target.assetXSymbol === target.assetYSymbol) {
           action.actionStatus = ActionStatus.Failed;
           throw new Error(
-            `executeSwapCKBtoToken Action #${action.actionID} | AssetX and AssetY must be the same for transfer action`,
+            `executeSwapCKBtoToken Action #${action.actionID} | AssetX and AssetY must be different for swap action`,
           );
         }
-        if (action.actorAddress === target.targetAddress) {
+        if (action.actorAddress !== target.targetAddress) {
           action.actionStatus = ActionStatus.Failed;
           throw new Error(
-            `executeSwapCKBtoToken Action #${action.actionID} | Actor and target addresses must be different for transfer action`,
+            `executeSwapCKBtoToken Action #${action.actionID} | Actor and target addresses must be the same for swap action`,
           );
         }
       }
@@ -44,19 +38,26 @@ export async function executeSwap(
           `executeSwapCKBtoToken Action #${action.actionID} | Actor wallet ${action.actorAddress} not found`,
         );
       }
-      const actorRootKey = HDKey.fromMasterSeed(
-        mnemonicToSeedSync(actorWallet.mnemonic),
-      );
-      const key = actorRootKey.derive(`${executeService.pathPrefix}0`);
-      if (!key.privateKey) {
+      // TODO: Implement importing from mnemonic
+      // const actorRootKey = HDKey.fromMasterSeed(
+      //   mnemonicToSeedSync(actorWallet.mnemonic),
+      // );
+      // const key = actorRootKey.derive(`${executeService.pathPrefix}0`);
+      // if (!key.privateKey) {
+      //   action.actionStatus = ActionStatus.Failed;
+      //   throw Error(
+      //     `executeSwapCKBtoToken Action #${action.actionID} | Failed to derive key`,
+      //   );
+      // }
+      if (!actorWallet.privateKey) {
         action.actionStatus = ActionStatus.Failed;
-        throw Error(
-          `executeSwapCKBtoToken Action #${action.actionID} | Failed to derive key`,
+        throw new Error(
+          `executeTransfer Action #${action.actionID} | Actor wallet ${action.actorAddress} has no private key`,
         );
       }
       const signer = new ccc.SignerCkbPrivateKey(
         executeService.CKBClient,
-        key.privateKey,
+        actorWallet.privateKey,
       );
       const signTxFunc = async (rawTx: CKBComponents.RawTransactionToSign) => {
         const txLike = await signer!.signTransaction(rawTx as TransactionLike);

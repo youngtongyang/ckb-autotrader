@@ -1,13 +1,17 @@
 import { Action, ActionStatus } from "@app/schemas";
 import { ccc } from "@ckb-ccc/core";
-import { HDKey } from "@scure/bip32";
-import { mnemonicToSeedSync } from "@scure/bip39";
 import { walletRegistry } from "parameters/walletRegistry";
 import { ExecuteService } from "../execute.service";
 export async function executeTransfer(
   executeService: ExecuteService,
   action: Action,
 ): Promise<ActionStatus> {
+  executeService.logger.debug(`executeTransfer Action | Start`);
+  for (const target of action.targets) {
+    executeService.logger.verbose(
+      `== ${target.amount} to ${target.targetAddress} `,
+    );
+  }
   let signedTx: any;
   if (
     [ActionStatus.Aborted, ActionStatus.Failed, ActionStatus.Stored].includes(
@@ -18,17 +22,17 @@ export async function executeTransfer(
   }
 
   if (action.actionStatus === ActionStatus.NotStarted) {
-    for (const target of action.targets) {
+    for (const [index, target] of action.targets.entries()) {
       if (target.assetXSymbol !== target.assetYSymbol) {
         action.actionStatus = ActionStatus.Failed;
         throw new Error(
-          `executeTransfer Action #${action.actionID} | AssetX and AssetY must be the same for transfer action`,
+          `executeTransfer Action #${index} | AssetX and AssetY must be the same for transfer action`,
         );
       }
       if (action.actorAddress === target.targetAddress) {
         action.actionStatus = ActionStatus.Failed;
         throw new Error(
-          `executeTransfer Action #${action.actionID} | Actor and target addresses must be different for transfer action`,
+          `executeTransfer Action #${index} | Actor and target addresses must be different for transfer action`,
         );
       }
     }
@@ -39,27 +43,32 @@ export async function executeTransfer(
     if (!actorWallet) {
       action.actionStatus = ActionStatus.Failed;
       throw new Error(
-        `executeTransfer Action #${action.actionID} | Actor wallet ${action.actorAddress} not found`,
+        `executeTransfer Action | Actor wallet ${action.actorAddress} not found`,
       );
     }
-    const actorRootKey = HDKey.fromMasterSeed(
-      mnemonicToSeedSync(actorWallet.mnemonic),
-    );
-    const key = actorRootKey.derive(`${executeService.pathPrefix}0`);
-    if (!key.privateKey) {
+    // TODO: Implement importing from mnemonic
+    // const actorRootKey = HDKey.fromMasterSeed(
+    //   mnemonicToSeedSync(actorWallet.mnemonic),
+    // );
+    // const key = actorRootKey.derive(`${executeService.pathPrefix}0`);
+    // if (!key.privateKey) {
+    //   action.actionStatus = ActionStatus.Failed;
+    //   throw Error(
+    //     `executeTransfer Action #${action.actionID} | Failed to derive key`,
+    //   );
+    // }
+    if (!actorWallet.privateKey) {
       action.actionStatus = ActionStatus.Failed;
-      throw Error(
-        `executeTransfer Action #${action.actionID} | Failed to derive key`,
+      throw new Error(
+        `executeTransfer Action | Actor wallet ${action.actorAddress} has no private key`,
       );
     }
-
     const signer = new ccc.SignerCkbPrivateKey(
       executeService.CKBClient,
-      key.privateKey,
+      actorWallet.privateKey,
     );
     const recommendedActorAddress = await signer.getRecommendedAddress();
     const { script: changeLock } = await signer.getRecommendedAddressObj();
-    const type = ccc.Script.from(JSON.parse(action.rawType));
     const outputsPromises = action.targets.map(async (target) => {
       const lock = await ccc.Address.fromString(
         target.targetAddress,
@@ -67,7 +76,7 @@ export async function executeTransfer(
       );
       return {
         lock: lock.script,
-        type,
+        type: executeService.symbolToScriptBuffer[target.assetXSymbol],
       };
     });
     const outputs = await Promise.all(outputsPromises);
@@ -82,19 +91,28 @@ export async function executeTransfer(
       executeService.CKBClient,
       ccc.KnownScript.XUdt,
     );
-    await tx.completeInputsByUdt(signer, type);
-    const balanceDiff =
-      (await tx.getInputsUdtBalance(signer.client, type)) -
-      tx.getOutputsUdtBalance(type);
-    if (balanceDiff > ccc.Zero) {
-      tx.addOutput(
-        {
-          lock: changeLock,
-          type,
-        },
-        ccc.numLeToBytes(balanceDiff, 16),
-      );
+    for (const tokenSymbol of Object.keys(
+      executeService.symbolToScriptBuffer,
+    )) {
+      const type = executeService.symbolToScriptBuffer[tokenSymbol];
+      if (type == undefined) {
+        continue;
+      }
+      await tx.completeInputsByUdt(signer, type);
+      const balanceDiff =
+        (await tx.getInputsUdtBalance(signer.client, type)) -
+        tx.getOutputsUdtBalance(type);
+      if (balanceDiff > ccc.Zero) {
+        tx.addOutput(
+          {
+            lock: changeLock,
+            type,
+          },
+          ccc.numLeToBytes(balanceDiff, 16),
+        );
+      }
     }
+
     await tx.completeInputsByCapacity(signer);
     await tx.completeFeeBy(signer, executeService.feeRate);
 
@@ -103,7 +121,7 @@ export async function executeTransfer(
     await executeService.CKBClient.cache.markTransactions(signedTx);
     action.rawTx = tx.stringify();
     executeService.logger.log(
-      `executeTransfer Action #${action.actionID} | Sending tokens from ${recommendedActorAddress} in Transaction, tx hash ${action.txHash}`,
+      `executeTransfer | Sending tokens from ${recommendedActorAddress} in Transaction, tx hash ${action.txHash}`,
     );
     for (const target of action.targets) {
       executeService.logger.log(

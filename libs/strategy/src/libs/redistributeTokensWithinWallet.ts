@@ -43,7 +43,7 @@ export async function redistributeTokensWithinWallet(
     });
   }
 
-  const redistributionsReferences: {
+  const redistributionReferences: {
     address: string;
     tokenSymbol: string;
     difference: number;
@@ -259,7 +259,7 @@ export async function redistributeTokensWithinWallet(
       // TODO: Implement tolerance
       continue;
     }
-    redistributionsReferences.push({
+    redistributionReferences.push({
       address: config.address,
       tokenSymbol: config.balanceConfig.symbol,
       difference,
@@ -269,20 +269,20 @@ export async function redistributeTokensWithinWallet(
   strategyService.logger.debug(
     "redistributeTokensWithinWallet | Redistribution References:",
   );
-  for (const reference of redistributionsReferences) {
+  for (const reference of redistributionReferences) {
     strategyService.logger.debug(
       `Token: ${reference.tokenSymbol}, Difference: ${reference.difference}, DifferenceInCKB: ${Number(reference.difference) * reference.priceInCKB}, Address: ${reference.address},`,
     );
   }
   /* redistributeTokensWithinWallet | Generate actions based on redistribution references */
-  while (redistributionsReferences.length > 0) {
-    const maxGiver = redistributionsReferences.reduce((prev, curr) =>
+  while (redistributionReferences.length > 0) {
+    const maxGiver = redistributionReferences.reduce((prev, curr) =>
       Number(prev.difference) * prev.priceInCKB <
       Number(curr.difference) * curr.priceInCKB
         ? prev
         : curr,
     );
-    const maxReceiver = redistributionsReferences.reduce((prev, curr) =>
+    const maxReceiver = redistributionReferences.reduce((prev, curr) =>
       Number(prev.difference) * prev.priceInCKB >
       Number(curr.difference) * curr.priceInCKB
         ? prev
@@ -317,6 +317,8 @@ export async function redistributeTokensWithinWallet(
         ],
         actionType: ActionType.Swap,
         actionStatus: ActionStatus.NotStarted,
+        updatedAt: new Date(),
+        createdAt: new Date(),
       });
       scenarioSnapshot.actions.push(newAction);
     } else {
@@ -343,8 +345,8 @@ export async function redistributeTokensWithinWallet(
       amountInCKBToSwap / maxReceiver.priceInCKB,
     );
     if (compareWithTolerance(maxGiver.difference, 0, undefined, 10 ** 10)) {
-      redistributionsReferences.splice(
-        redistributionsReferences.findIndex(
+      redistributionReferences.splice(
+        redistributionReferences.findIndex(
           (reference) =>
             reference.address === maxGiver.address &&
             reference.tokenSymbol === maxGiver.tokenSymbol,
@@ -353,8 +355,8 @@ export async function redistributeTokensWithinWallet(
       );
     }
     if (compareWithTolerance(maxReceiver.difference, 0, undefined, 10 ** 10)) {
-      redistributionsReferences.splice(
-        redistributionsReferences.findIndex(
+      redistributionReferences.splice(
+        redistributionReferences.findIndex(
           (reference) =>
             reference.address === maxReceiver.address &&
             reference.tokenSymbol === maxReceiver.tokenSymbol,
@@ -363,7 +365,7 @@ export async function redistributeTokensWithinWallet(
       );
     }
     strategyService.logger.debug(
-      `redistributeTokensAcrossWallets | Swap ${amountToSwap} ${maxGiver.tokenSymbol} into ${amountInCKBToSwap / maxReceiver.priceInCKB} ${maxReceiver.tokenSymbol} from ${maxGiver.address} to ${maxReceiver.address}`,
+      `redistributeTokensAcrossWallets | Swap ${amountToSwap} Unit of ${maxGiver.tokenSymbol} into ${amountInCKBToSwap / maxReceiver.priceInCKB} ${maxReceiver.tokenSymbol} from ${maxGiver.address} to ${maxReceiver.address}`,
     );
   }
   return;

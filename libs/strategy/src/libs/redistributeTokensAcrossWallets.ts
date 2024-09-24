@@ -1,3 +1,4 @@
+import { compareWithTolerance } from "@app/commons";
 import {
   ActionStatus,
   ActionType,
@@ -38,7 +39,7 @@ export async function redistributeTokensAcrossWallets(
       });
     }
   }
-  const redistributionsReferences: {
+  const redistributionReferences: {
     address: string;
     tokenSymbol: string;
     difference: number;
@@ -143,7 +144,7 @@ export async function redistributeTokensAcrossWallets(
         // TODO: Implement tolerance
         continue;
       }
-      redistributionsReferences.push({
+      redistributionReferences.push({
         address: config.address,
         tokenSymbol,
         difference,
@@ -153,14 +154,14 @@ export async function redistributeTokensAcrossWallets(
   strategyService.logger.debug(
     "redistributeTokensAcrossWallets | Redistribution References:",
   );
-  for (const reference of redistributionsReferences) {
+  for (const reference of redistributionReferences) {
     strategyService.logger.debug(
       `Token: ${reference.tokenSymbol}, Difference: ${reference.difference}, Address: ${reference.address},`,
     );
   }
 
   for (const tokenSymbol of tokenSymbols) {
-    const matchingRedistributionReferences = redistributionsReferences.filter(
+    const matchingRedistributionReferences = redistributionReferences.filter(
       (reference) => reference.tokenSymbol === tokenSymbol,
     );
     /* redistributeTokensAcrossWallets | Generate actions based on redistribution references */
@@ -175,9 +176,11 @@ export async function redistributeTokensAcrossWallets(
       if (maxGiver.difference === 0 || maxReceiver.difference === 0) {
         break;
       }
-      const amountToTransfer = Math.min(
-        Math.abs(maxGiver.difference),
-        Math.abs(maxReceiver.difference),
+      const amountToTransfer = Math.floor(
+        Math.min(
+          Math.abs(maxGiver.difference),
+          Math.abs(maxReceiver.difference),
+        ),
       );
       const matchingAction = scenarioSnapshot.actions.find(
         (action) => action.actorAddress === maxGiver.address,
@@ -196,10 +199,12 @@ export async function redistributeTokensAcrossWallets(
           ],
           actionType: ActionType.Transfer,
           actionStatus: ActionStatus.NotStarted,
+          updatedAt: new Date(),
+          createdAt: new Date(),
         });
         scenarioSnapshot.actions.push(newAction);
         strategyService.logger.debug(
-          `redistributeTokensAcrossWallets | New Action Generated: ${newAction.actorAddress} transferring ${newAction.targets[0].amount} ${newAction.targets[0].assetXSymbol} to ${newAction.targets[0].targetAddress}`,
+          `redistributeTokensAcrossWallets | New Action Generated: ${newAction.actorAddress} transferring ${newAction.targets[0].amount} Unit of ${newAction.targets[0].assetXSymbol} to ${newAction.targets[0].targetAddress}`,
         );
       } else {
         matchingAction.targets.push({
@@ -209,7 +214,7 @@ export async function redistributeTokensAcrossWallets(
           assetYSymbol: tokenSymbol,
         });
         strategyService.logger.debug(
-          `redistributeTokensAcrossWallets | Existing Action Updated: ${matchingAction.actorAddress} transferring ${amountToTransfer} ${tokenSymbol} to ${maxReceiver.address}`,
+          `redistributeTokensAcrossWallets | Existing Action Updated: ${matchingAction.actorAddress} transferring ${amountToTransfer} Unit of ${tokenSymbol} to ${maxReceiver.address}`,
         );
       }
       scenarioSnapshot.pendingBalanceChanges.push({
@@ -225,9 +230,17 @@ export async function redistributeTokensAcrossWallets(
       // Drop the giver and receiver from the list if difference has been reduced to 0
       maxGiver.difference += amountToTransfer;
       maxReceiver.difference -= amountToTransfer;
-      if (maxGiver.difference === 0) {
-        redistributionsReferences.splice(
-          redistributionsReferences.findIndex(
+      if (compareWithTolerance(maxGiver.difference, 0, undefined, 10 ** 8)) {
+        redistributionReferences.splice(
+          redistributionReferences.findIndex(
+            (reference) =>
+              reference.address === maxGiver.address &&
+              reference.tokenSymbol === tokenSymbol,
+          ),
+          1,
+        );
+        matchingRedistributionReferences.splice(
+          redistributionReferences.findIndex(
             (reference) =>
               reference.address === maxGiver.address &&
               reference.tokenSymbol === tokenSymbol,
@@ -235,9 +248,19 @@ export async function redistributeTokensAcrossWallets(
           1,
         );
       }
-      if (maxReceiver.difference === 0) {
-        redistributionsReferences.splice(
-          redistributionsReferences.findIndex(
+      if (
+        compareWithTolerance(maxReceiver.difference, 0, undefined, 10 ** 10)
+      ) {
+        redistributionReferences.splice(
+          redistributionReferences.findIndex(
+            (reference) =>
+              reference.address === maxReceiver.address &&
+              reference.tokenSymbol === tokenSymbol,
+          ),
+          1,
+        );
+        matchingRedistributionReferences.splice(
+          redistributionReferences.findIndex(
             (reference) =>
               reference.address === maxReceiver.address &&
               reference.tokenSymbol === tokenSymbol,

@@ -26,6 +26,9 @@ export class ExecuteService {
   readonly slippage: string;
   private pools: Pool[] = [];
   private scenarioSnapshots: ScenarioSnapshot[] = [];
+  symbolToScriptBuffer: {
+    [symbol: string]: CKBComponents.Script | undefined;
+  } = {};
 
   constructor(
     configService: ConfigService,
@@ -59,14 +62,40 @@ export class ExecuteService {
     // NOTE: This function is designed to be blocking.
     // TODO: Abort by timer;
     this.logger.verbose("executeActions | Actions in scenarioSnapshot: ");
-    for (const action of scenarioSnapshot.actions) {
+    for (const [index, action] of scenarioSnapshot.actions.entries()) {
       this.logger.verbose(
-        `executeActions | Action #${action.actionID} | ${action.actionType} | ${action.actionStatus}`,
+        `executeActions | Action #${index} | ${action.actionType} | ${action.actionStatus}`,
       );
     }
+    /* Load scripts for tokens */
+    for (const action of scenarioSnapshot.actions) {
+      for (const target of action.targets) {
+        if (
+          !Object.keys(this.symbolToScriptBuffer).includes(target.assetXSymbol)
+        ) {
+          if (target.assetXSymbol === "CKB") {
+            this.symbolToScriptBuffer[target.assetXSymbol] = undefined;
+          } else {
+            // Find the token object among the poolInfos
+            const poolInfo = scenarioSnapshot.poolInfos.find(
+              (poolInfo) => poolInfo.assetX.symbol === target.assetXSymbol,
+            );
+            if (!poolInfo) {
+              throw new Error(
+                `executeActions| Pool info not found for token ${target.assetXSymbol}`,
+              );
+            } else {
+              this.symbolToScriptBuffer[target.assetXSymbol] =
+                poolInfo.assetX.typeScript;
+            }
+          }
+        }
+      }
+    }
     while (
-      scenarioSnapshot.actionGroupStatus ===
-      (ActionGroupStatus.Aborted || ActionGroupStatus.Completed)
+      ![ActionGroupStatus.Aborted, ActionGroupStatus.Completed].includes(
+        scenarioSnapshot.actionGroupStatus,
+      )
     ) {
       for (const action of scenarioSnapshot.actions.filter(
         (action) =>
@@ -77,6 +106,7 @@ export class ExecuteService {
           ].includes(action.actionStatus),
       )) {
         // TODO: This is blocking, should be refactored to be non-blocking
+        // TODO: Limiting swapping to only one token per action for now. Might implement multiple token swaps in one action in the future.
         let status: ActionStatus;
         switch (action.actionType) {
           case ActionType.Transfer:
@@ -85,20 +115,27 @@ export class ExecuteService {
           case ActionType.Swap:
             const matchingPoolInfo = scenarioSnapshot.poolInfos.find(
               (poolInfo) =>
-                poolInfo.assetY.symbol === "CKB" &&
+                poolInfo.assetY.symbol === action.targets[0].assetYSymbol &&
                 poolInfo.assetX.symbol === action.targets[0].assetXSymbol,
             );
+            // TODO: Reverse the poolInfo if the pool is not found
             if (!matchingPoolInfo) {
               action.actionStatus = ActionStatus.Failed;
               throw new Error("No matching pool found");
             }
             const matchingPool = new Pool({
-              tokens: [matchingPoolInfo!.assetX, matchingPoolInfo!.assetY],
+              tokens: [matchingPoolInfo.assetX, matchingPoolInfo.assetY],
               ckbAddress: action.actorAddress,
               collector: this.collector,
               client: this.UTXOSwapClient,
               poolInfo: matchingPoolInfo,
             });
+            const { output } =
+              matchingPool.calculateOutputAmountAndPriceImpactWithExactInput(
+                action.targets[0].amount,
+              );
+            matchingPool.tokens[0].amount = action.targets[0].amount;
+            matchingPool.tokens[1].amount = output;
             status = await executeSwap(
               this,
               action,
