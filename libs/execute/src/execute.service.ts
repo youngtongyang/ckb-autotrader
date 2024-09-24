@@ -1,11 +1,15 @@
 import {
+  ExtraCellDepEnum,
+  extraCellDepSearchKeys,
+} from "@app/commons/utils/cellDeps";
+import {
   Action,
   ActionGroupStatus,
   ActionStatus,
   ActionType,
   ScenarioSnapshot,
 } from "@app/schemas";
-import { ccc } from "@ckb-ccc/core";
+import { ccc, Cell, CellDepLike } from "@ckb-ccc/core";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Client, Collector, Pool } from "@utxoswap/swap-sdk-js";
@@ -26,7 +30,12 @@ export class ExecuteService {
   private pools: Pool[] = [];
   private scenarioSnapshots: ScenarioSnapshot[] = [];
   symbolToScriptBuffer: {
-    [symbol: string]: CKBComponents.Script | undefined;
+    [symbol: string]:
+      | {
+          script: CKBComponents.Script | undefined;
+          cellDep: CellDepLike | undefined;
+        }
+      | undefined;
   } = {};
 
   constructor(
@@ -88,9 +97,32 @@ export class ExecuteService {
               throw new Error(
                 `executeActions| Pool info not found for token ${target.assetXSymbol}`,
               );
+            } else if (target.assetXSymbol in ExtraCellDepEnum) {
+              let extraCellDepCell: Cell;
+              while (true) {
+                const findCellsResult = await this.CKBClient.findCells(
+                  extraCellDepSearchKeys[target.assetXSymbol],
+                ).next();
+                if (findCellsResult.value) {
+                  extraCellDepCell = findCellsResult.value;
+                  break;
+                }
+              }
+              const extraCellDepLike: CellDepLike = {
+                outPoint: {
+                  txHash: extraCellDepCell.outPoint.txHash,
+                  index: extraCellDepCell.outPoint.index,
+                },
+                depType: "code",
+              };
+              this.symbolToScriptBuffer[target.assetXSymbol] = {
+                script: poolInfo.assetX.typeScript,
+                cellDep: extraCellDepLike,
+              };
             } else {
-              this.symbolToScriptBuffer[target.assetXSymbol] =
-                poolInfo.assetX.typeScript;
+              this.logger.error(
+                `executeActions | Unsupported token ${target.assetXSymbol}`,
+              );
             }
           }
         }
@@ -101,6 +133,8 @@ export class ExecuteService {
         scenarioSnapshot.actionGroupStatus,
       )
     ) {
+      // Wait the interaction interval
+      await new Promise((resolve) => setTimeout(resolve, 10 * 1000));
       for (const action of scenarioSnapshot.actions.filter(
         (action) =>
           ![

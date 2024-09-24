@@ -1,5 +1,6 @@
+import { bytesFromAnyString } from "@app/commons";
 import { Action, ActionStatus } from "@app/schemas";
-import { ccc } from "@ckb-ccc/core";
+import { ccc, CellDepLike } from "@ckb-ccc/core";
 import { walletRegistry } from "parameters/walletRegistry";
 import { ExecuteService } from "../execute.service";
 export async function executeTransfer(
@@ -7,9 +8,12 @@ export async function executeTransfer(
   action: Action,
 ): Promise<ActionStatus> {
   executeService.logger.debug(`executeTransfer Action | Start`);
+  executeService.logger.verbose(
+    `executeTransfer Action | Action TxHash: ${action.txHash}; Action Status: ${action.actionStatus}`,
+  );
   for (const target of action.targets) {
     executeService.logger.verbose(
-      `== ${target.amount} to ${target.targetAddress} `,
+      `== ${target.amount} Units of ${target.assetXSymbol} to ${target.targetAddress} `,
     );
   }
   let signedTx: any;
@@ -76,13 +80,18 @@ export async function executeTransfer(
       );
       return {
         lock: lock.script,
-        type: executeService.symbolToScriptBuffer[target.assetXSymbol],
+        type: executeService.symbolToScriptBuffer[target.assetXSymbol]?.script,
+        capacity: target.assetXSymbol === "CKB" ? target.amount : undefined,
       };
     });
     const outputs = await Promise.all(outputsPromises);
-    const outputsData = action.targets.map((target) =>
-      ccc.numLeToBytes(target.amount, 16),
-    );
+    const outputsData = action.targets.map((target) => {
+      if (target.assetXSymbol === "CKB") {
+        return bytesFromAnyString("");
+      } else {
+        return ccc.numLeToBytes(target.amount, 16);
+      }
+    });
     const tx = ccc.Transaction.from({
       outputs,
       outputsData,
@@ -91,10 +100,17 @@ export async function executeTransfer(
       executeService.CKBClient,
       ccc.KnownScript.XUdt,
     );
+    for (const target of action.targets) {
+      const cellDep =
+        executeService.symbolToScriptBuffer[target.assetXSymbol]?.cellDep;
+      if (cellDep !== undefined) {
+        tx.addCellDeps(cellDep as CellDepLike);
+      }
+    }
     for (const tokenSymbol of Object.keys(
       executeService.symbolToScriptBuffer,
     )) {
-      const type = executeService.symbolToScriptBuffer[tokenSymbol];
+      const type = executeService.symbolToScriptBuffer[tokenSymbol]?.script;
       if (type == undefined) {
         continue;
       }
@@ -143,12 +159,16 @@ export async function executeTransfer(
             "passthrough",
           );
         } catch (e: any) {
+          executeService.logger.error(
+            `executeTransfer Action | Action with hash ${action.txHash} failed to send.`,
+            e.message,
+          );
           if (
             e instanceof ccc.ErrorClientVerification ||
             e instanceof ccc.ErrorClientRBFRejected
           ) {
             executeService.logger.error(
-              `Action ${action.actionID} with hash ${action.txHash} failed to pass verification.`,
+              `Action with hash ${action.txHash} failed to pass verification.`,
               e.message,
             );
             await executeService.actionRepo.updateStatus(
@@ -181,12 +201,12 @@ export async function executeTransfer(
               !isDead
             ) {
               executeService.logger.warn(
-                `executeTransfer Action #${action.actionID} | Action with with hash ${action.txHash} is waiting for ${previousAction.actionID} with hash ${previousAction.txHash}.`,
+                `executeTransfer Action | Action with with hash ${action.txHash} is waiting for previous action with hash ${previousAction.txHash}.`,
               );
               return action.actionStatus;
             } else {
               executeService.logger.error(
-                `executeTransfer Action #${action.actionID} | Action with hash ${action.txHash} failed by using unknown out point. ${e.outPoint.txHash}:${e.outPoint.index.toString()}`,
+                `executeTransfer Action | Action with hash ${action.txHash} failed by using unknown out point. ${e.outPoint.txHash}:${e.outPoint.index.toString()}`,
               );
               action.actionStatus = ActionStatus.Failed;
               await executeService.actionRepo.updateStatus(
@@ -202,7 +222,7 @@ export async function executeTransfer(
           } else {
             action.actionStatus = ActionStatus.Failed;
             throw new Error(
-              `executeTransfer Action #${action.actionID} | Action with hash ${action.txHash} has been submitted the second time. This should not happen.`,
+              `executeTransfer Action | Action with hash ${action.txHash} has been submitted the second time. This should not happen.`,
             );
           }
         }
@@ -210,16 +230,19 @@ export async function executeTransfer(
     }
     action.actionStatus = ActionStatus.TransferSent;
     executeService.logger.log(
-      `executeTransfer Action #${action.actionID} | Transfer transaction ${action.txHash} has been sent`,
+      `executeTransfer Action | Transfer transaction ${action.txHash} has been sent`,
     );
   }
   if (action.actionStatus === ActionStatus.TransferSent) {
     const getTransactionResponse =
       await executeService.CKBClient.getTransaction(action.txHash);
+    executeService.logger.verbose(
+      `executeTransfer Action | Action with hash ${action.txHash} status is ${getTransactionResponse?.status}`,
+    );
     if (!getTransactionResponse || getTransactionResponse.status === "sent") {
-      if (Date.now() - action.updatedAt.getTime() >= 120000) {
+      if (Date.now() - action.updatedAt.getTime() >= 12000) {
         executeService.logger.error(
-          `executeTransfer Action #${action.actionID} | Action with hash ${action.txHash} rearranged by not found.`,
+          `executeTransfer Action | Action with hash ${action.txHash} rearranged by not found.`,
         );
         action.actionStatus = ActionStatus.TxCreated;
         return action.actionStatus;
@@ -228,9 +251,9 @@ export async function executeTransfer(
         getTransactionResponse &&
         getTransactionResponse.blockNumber === undefined
       ) {
-        if (Date.now() - action.updatedAt.getTime() >= 600000) {
+        if (Date.now() - action.updatedAt.getTime() >= 60000) {
           executeService.logger.error(
-            `executeTransfer Action #${action.actionID} | Action with hash ${action.txHash} rearranged by not committed`,
+            `executeTransfer Action | Action with hash ${action.txHash} rearranged by not committed`,
           );
           action.actionStatus = ActionStatus.TxCreated;
           return action.actionStatus;
@@ -238,7 +261,7 @@ export async function executeTransfer(
       } else {
         action.actionStatus = ActionStatus.Committed;
         executeService.logger.log(
-          `executeTransfer Action #${action.actionID} | Action with hash ${action.txHash} committed`,
+          `executeTransfer Action | Action with hash ${action.txHash} committed`,
         );
       }
     }
@@ -251,7 +274,7 @@ export async function executeTransfer(
       getTransactionResponse.blockNumber === undefined
     ) {
       executeService.logger.error(
-        `executeTransfer Action #${action.actionID} | Action with hash ${action.txHash} rearranged by not found.`,
+        `executeTransfer Action | Action with hash ${action.txHash} rearranged by not found.`,
       );
       action.actionStatus = ActionStatus.TxCreated;
       return action.actionStatus;
@@ -260,7 +283,7 @@ export async function executeTransfer(
     if (getTransactionResponse.status === "rejected") {
       action.actionStatus = ActionStatus.Failed;
       executeService.logger.error(
-        `executeTransfer Action #${action.actionID} | Action with hash ${action.txHash} failed ${getTransactionResponse.reason}.`,
+        `executeTransfer Action | Action with hash ${action.txHash} failed ${getTransactionResponse.reason}.`,
       );
       return action.actionStatus;
     }

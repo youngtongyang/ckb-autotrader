@@ -158,3 +158,11 @@ export function compareWithTolerance(
     }
   }
 }
+
+export function bytesFromAnyString(str: string): ccc.Bytes {
+  try {
+    return ccc.bytesFrom(str);
+  } catch (e) {}
+
+  return ccc.bytesFrom(str, "utf8");
+}
