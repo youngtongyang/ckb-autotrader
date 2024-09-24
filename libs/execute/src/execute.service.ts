@@ -16,9 +16,8 @@ import { ActionRepo } from "./repos";
 @Injectable()
 export class ExecuteService {
   readonly logger = new Logger(ExecuteService.name);
-  private readonly apiKey = "your api key";
-  readonly CKBClient: ccc.Client = new ccc.ClientPublicTestnet();
-  readonly UTXOSwapClient: Client = new Client(false, this.apiKey);
+  readonly CKBClient: ccc.Client;
+  readonly UTXOSwapClient: Client;
   private readonly collector: Collector;
   private readonly maxPendingTxs: number;
   readonly pathPrefix: string;
@@ -56,6 +55,11 @@ export class ExecuteService {
     }
     this.slippage = slippage;
     this.actionRepo = actionRepo;
+    const UTXOSwapApiKey = configService.get<string>(
+      "common.utxo_swap_api_key",
+    );
+    const isMainnet = configService.get<boolean>("is_mainnet");
+    this.UTXOSwapClient = new Client(isMainnet, UTXOSwapApiKey);
   }
 
   async executeActions(scenarioSnapshot: ScenarioSnapshot): Promise<void> {
@@ -130,11 +134,12 @@ export class ExecuteService {
               client: this.UTXOSwapClient,
               poolInfo: matchingPoolInfo,
             });
+            const inputValue = Number(action.targets[0].amount) / 10 ** 8;
             const { output } =
               matchingPool.calculateOutputAmountAndPriceImpactWithExactInput(
-                action.targets[0].amount,
+                inputValue.toString(),
               );
-            matchingPool.tokens[0].amount = action.targets[0].amount;
+            matchingPool.tokens[0].amount = inputValue.toString();
             matchingPool.tokens[1].amount = output;
             status = await executeSwap(
               this,
