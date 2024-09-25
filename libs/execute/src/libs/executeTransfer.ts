@@ -220,6 +220,7 @@ export async function executeTransfer(
           if (e instanceof ccc.ErrorClientDuplicatedTransaction) {
             // It has been sent?
           } else {
+            // TODO: The error might not be parsed properly here. Read the actual error message. Should improve here.
             action.actionStatus = ActionStatus.Failed;
             throw new Error(
               `executeTransfer Action | Action with hash ${action.txHash} has been submitted the second time. This should not happen.`,
@@ -239,6 +240,8 @@ export async function executeTransfer(
     executeService.logger.verbose(
       `executeTransfer Action | Action with hash ${action.txHash} status is ${getTransactionResponse?.status}`,
     );
+    // TODO: The error might not be delivered and stuck at the "sent" stage. You might need to send the transaction again to get the error.
+    // TODO: Also, the error might not be caught properly based on the current implementation. Need to improve.
     if (!getTransactionResponse || getTransactionResponse.status === "sent") {
       if (Date.now() - action.updatedAt.getTime() >= 120000) {
         executeService.logger.error(

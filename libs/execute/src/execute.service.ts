@@ -3,7 +3,6 @@ import {
   extraCellDepSearchKeys,
 } from "@app/commons/utils/cellDeps";
 import {
-  Action,
   ActionGroupStatus,
   ActionStatus,
   ActionType,
@@ -27,6 +26,7 @@ export class ExecuteService {
   readonly pathPrefix: string;
   readonly feeRate: number;
   readonly slippage: string;
+  readonly executeIntervalInSeconds: number;
   private pools: Pool[] = [];
   private scenarioSnapshots: ScenarioSnapshot[] = [];
   symbolToScriptBuffer: {
@@ -69,6 +69,13 @@ export class ExecuteService {
     );
     const isMainnet = configService.get<boolean>("is_mainnet");
     this.UTXOSwapClient = new Client(isMainnet, UTXOSwapApiKey);
+    const executeIntervalInSeconds = configService.get<number>(
+      "execute.execute_interval_in_seconds",
+    );
+    if (executeIntervalInSeconds === undefined) {
+      throw Error("Empty execute interval");
+    }
+    this.executeIntervalInSeconds = executeIntervalInSeconds;
   }
 
   async executeActions(scenarioSnapshot: ScenarioSnapshot): Promise<void> {
@@ -133,8 +140,10 @@ export class ExecuteService {
         scenarioSnapshot.actionGroupStatus,
       )
     ) {
-      // Wait the interaction interval
-      await new Promise((resolve) => setTimeout(resolve, 10 * 1000));
+      // Wait the execute interval
+      await new Promise((resolve) =>
+        setTimeout(resolve, this.executeIntervalInSeconds * 1000),
+      );
       for (const action of scenarioSnapshot.actions.filter(
         (action) =>
           ![
@@ -144,13 +153,13 @@ export class ExecuteService {
           ].includes(action.actionStatus),
       )) {
         // TODO: This is blocking, should be refactored to be non-blocking
-        // TODO: Limiting swapping to only one token per action for now. Might implement multiple token swaps in one action in the future.
         let status: ActionStatus;
         switch (action.actionType) {
           case ActionType.Transfer:
             status = await executeTransfer(this, action);
             break;
           case ActionType.Swap:
+            // TODO: Limiting swapping to only one token per action for now. Might implement multiple token swaps in one action in the future.
             const matchingPoolInfo = scenarioSnapshot.poolInfos.find(
               (poolInfo) =>
                 poolInfo.assetY.symbol === action.targets[0].assetYSymbol &&
@@ -182,21 +191,21 @@ export class ExecuteService {
               this.slippage,
             );
             break;
-          case ActionType.AddLiquidity:
-            status = await this.executeAddLiquidity(action);
-            break;
-          case ActionType.RemoveLiquidity:
-            status = await this.executeRemoveLiquidity(action);
-            break;
-          case ActionType.SwapExactInputForOutput:
-            status = await this.executeSwapExactInputForOutput(action);
-            break;
-          case ActionType.SwapInputForExactOutput:
-            status = await this.executeSwapInputForExactOutput(action);
-            break;
-          case ActionType.ClaimProtocolLiquidity:
-            status = await this.executeClaimProtocolLiquidity(action);
-            break;
+          // case ActionType.AddLiquidity:
+          //   status = await this.executeAddLiquidity(action);
+          //   break;
+          // case ActionType.RemoveLiquidity:
+          //   status = await this.executeRemoveLiquidity(action);
+          //   break;
+          // case ActionType.SwapExactInputForOutput:
+          //   status = await this.executeSwapExactInputForOutput(action);
+          //   break;
+          // case ActionType.SwapInputForExactOutput:
+          //   status = await this.executeSwapInputForExactOutput(action);
+          //   break;
+          // case ActionType.ClaimProtocolLiquidity:
+          //   status = await this.executeClaimProtocolLiquidity(action);
+          //   break;
           default:
             throw new Error("Unsupported action type");
         }
@@ -217,42 +226,43 @@ export class ExecuteService {
         scenarioSnapshot.actionGroupStatus = ActionGroupStatus.Aborted;
       }
     }
+    // TODO: Clear buffer
     return;
   }
 
-  private async executeAddLiquidity(action: Action): Promise<ActionStatus> {
-    //TODO: implement
-    console.log(action);
-    return ActionStatus.Confirmed;
-  }
+  // private async executeAddLiquidity(action: Action): Promise<ActionStatus> {
+  //   //TODO: implement
+  //   console.log(action);
+  //   return ActionStatus.Confirmed;
+  // }
 
-  private async executeRemoveLiquidity(action: Action): Promise<ActionStatus> {
-    //TODO: implement
-    console.log(action);
-    return ActionStatus.Confirmed;
-  }
+  // private async executeRemoveLiquidity(action: Action): Promise<ActionStatus> {
+  //   //TODO: implement
+  //   console.log(action);
+  //   return ActionStatus.Confirmed;
+  // }
 
-  private async executeSwapExactInputForOutput(
-    action: Action,
-  ): Promise<ActionStatus> {
-    // TODO: implement
-    console.log(action);
-    return ActionStatus.Confirmed;
-  }
+  // private async executeSwapExactInputForOutput(
+  //   action: Action,
+  // ): Promise<ActionStatus> {
+  //   // TODO: implement
+  //   console.log(action);
+  //   return ActionStatus.Confirmed;
+  // }
 
-  private async executeSwapInputForExactOutput(
-    action: Action,
-  ): Promise<ActionStatus> {
-    // TODO: implement
-    console.log(action);
-    return ActionStatus.Confirmed;
-  }
+  // private async executeSwapInputForExactOutput(
+  //   action: Action,
+  // ): Promise<ActionStatus> {
+  //   // TODO: implement
+  //   console.log(action);
+  //   return ActionStatus.Confirmed;
+  // }
 
-  private async executeClaimProtocolLiquidity(
-    action: Action,
-  ): Promise<ActionStatus> {
-    // TODO: implement
-    console.log(action);
-    return ActionStatus.Confirmed;
-  }
+  // private async executeClaimProtocolLiquidity(
+  //   action: Action,
+  // ): Promise<ActionStatus> {
+  //   // TODO: implement
+  //   console.log(action);
+  //   return ActionStatus.Confirmed;
+  // }
 }

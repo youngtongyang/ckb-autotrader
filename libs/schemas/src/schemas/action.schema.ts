@@ -11,11 +11,11 @@ import { ScenarioSnapshot } from "./scenarioSnapshot.schema";
 export enum ActionType {
   Transfer = "Transfer",
   Swap = "Swap",
-  AddLiquidity = "AddLiquidity",
-  RemoveLiquidity = "RemoveLiquidity",
-  SwapExactInputForOutput = "SwapExactInputForOutput",
-  SwapInputForExactOutput = "SwapInputForExactOutput",
-  ClaimProtocolLiquidity = "ClaimProtocolLiquidity",
+  // AddLiquidity = "AddLiquidity",
+  // RemoveLiquidity = "RemoveLiquidity",
+  // SwapExactInputForOutput = "SwapExactInputForOutput",
+  // SwapInputForExactOutput = "SwapInputForExactOutput",
+  // ClaimProtocolLiquidity = "ClaimProtocolLiquidity",
 }
 
 export enum ActionStatus {
