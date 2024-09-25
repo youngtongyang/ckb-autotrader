@@ -13,7 +13,7 @@ export async function executeSwap(
 ): Promise<ActionStatus> {
   executeService.logger.debug(`executeSwap Action | Started`);
   executeService.logger.verbose(
-    `executeSwap Action | Action TxHash: ${action.txHash}; Action Status: ${action.actionStatus}`,
+    `executeSwap Action | Action TxHash: ${action.txHash === undefined ? "N/A" : action.txHash}; Action Status: ${action.actionStatus}`,
   );
   for (const target of action.targets) {
     executeService.logger.verbose(
@@ -27,13 +27,13 @@ export async function executeSwap(
         if (target.originalAssetSymbol === target.targetAssetSymbol) {
           action.actionStatus = ActionStatus.Failed;
           throw new Error(
-            `executeSwapCKBtoToken Action #${action.actionID} | AssetX and AssetY must be different for swap action`,
+            `executeSwap Action | AssetX and AssetY must be different for swap action`,
           );
         }
         if (action.actorAddress !== target.targetAddress) {
           action.actionStatus = ActionStatus.Failed;
           throw new Error(
-            `executeSwapCKBtoToken Action #${action.actionID} | Actor and target addresses must be the same for swap action`,
+            `executeSwap Action | Actor and target addresses must be the same for swap action`,
           );
         }
       }
@@ -44,7 +44,7 @@ export async function executeSwap(
       if (!actorWallet) {
         action.actionStatus = ActionStatus.Failed;
         throw new Error(
-          `executeSwapCKBtoToken Action #${action.actionID} | Actor wallet ${action.actorAddress} not found`,
+          `executeSwap Action | Actor wallet ${action.actorAddress} not found`,
         );
       }
       // TODO: Implement importing from mnemonic
@@ -55,13 +55,13 @@ export async function executeSwap(
       // if (!key.privateKey) {
       //   action.actionStatus = ActionStatus.Failed;
       //   throw Error(
-      //     `executeSwapCKBtoToken Action #${action.actionID} | Failed to derive key`,
+      //     `executeSwap Action #${action.actionID} | Failed to derive key`,
       //   );
       // }
       if (!actorWallet.privateKey) {
         action.actionStatus = ActionStatus.Failed;
         throw new Error(
-          `executeTransfer Action #${action.actionID} | Actor wallet ${action.actorAddress} has no private key`,
+          `executeTransfer Action | Actor wallet ${action.actorAddress} has no private key`,
         );
       }
       const signer = new ccc.SignerCkbPrivateKey(
@@ -79,9 +79,7 @@ export async function executeSwap(
       );
       if (!intentTxHash) {
         action.actionStatus = ActionStatus.Failed;
-        throw new Error(
-          `executeSwapCKBtoToken Action #${action.actionID} | Failed to obtain intent tx hash`,
-        );
+        throw new Error(`executeSwap Action | Failed to obtain intent tx hash`);
       } else {
         action.txHash = intentTxHash;
         action.actionStatus = ActionStatus.IntentCreationSent;
@@ -89,7 +87,7 @@ export async function executeSwap(
     } catch (e: any) {
       action.actionStatus = ActionStatus.Failed;
       executeService.logger.error(
-        `executeSwapCKBtoToken Action #${action.actionID} | Failed in try catch:${e.message}`,
+        `executeSwap Action #${action.actionID} | Failed in try catch:${e.message}`,
         e.stack,
       );
       throw e;

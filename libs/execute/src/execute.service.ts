@@ -174,13 +174,22 @@ export class ExecuteService {
                   poolInfo.assetX.symbol ===
                     action.targets[0].targetAssetSymbol),
             );
-            // TODO: Reverse the poolInfo if the pool is not found
             if (!matchingPoolInfo) {
               action.actionStatus = ActionStatus.Failed;
               throw new Error("No matching pool found");
             }
+            const inputToken =
+              matchingPoolInfo.assetY.symbol ===
+              action.targets[0].originalAssetSymbol
+                ? matchingPoolInfo.assetY
+                : matchingPoolInfo.assetX;
+            const outputToken =
+              matchingPoolInfo.assetY.symbol ===
+              action.targets[0].originalAssetSymbol
+                ? matchingPoolInfo.assetX
+                : matchingPoolInfo.assetY;
             const matchingPool = new Pool({
-              tokens: [matchingPoolInfo.assetX, matchingPoolInfo.assetY],
+              tokens: [inputToken, outputToken],
               ckbAddress: action.actorAddress,
               collector: this.collector,
               client: this.UTXOSwapClient,
