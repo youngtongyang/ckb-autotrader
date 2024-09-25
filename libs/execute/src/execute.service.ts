@@ -91,24 +91,27 @@ export class ExecuteService {
     for (const action of scenarioSnapshot.actions) {
       for (const target of action.targets) {
         if (
-          !Object.keys(this.symbolToScriptBuffer).includes(target.assetXSymbol)
+          !Object.keys(this.symbolToScriptBuffer).includes(
+            target.originalAssetSymbol,
+          )
         ) {
-          if (target.assetXSymbol === "CKB") {
-            this.symbolToScriptBuffer[target.assetXSymbol] = undefined;
+          if (target.originalAssetSymbol === "CKB") {
+            this.symbolToScriptBuffer[target.originalAssetSymbol] = undefined;
           } else {
             // Find the token object among the poolInfos
             const poolInfo = scenarioSnapshot.poolInfos.find(
-              (poolInfo) => poolInfo.assetX.symbol === target.assetXSymbol,
+              (poolInfo) =>
+                poolInfo.assetX.symbol === target.originalAssetSymbol,
             );
             if (!poolInfo) {
               throw new Error(
-                `executeActions| Pool info not found for token ${target.assetXSymbol}`,
+                `executeActions| Pool info not found for token ${target.originalAssetSymbol}`,
               );
-            } else if (target.assetXSymbol in ExtraCellDepEnum) {
+            } else if (target.originalAssetSymbol in ExtraCellDepEnum) {
               let extraCellDepCell: Cell;
               while (true) {
                 const findCellsResult = await this.CKBClient.findCells(
-                  extraCellDepSearchKeys[target.assetXSymbol],
+                  extraCellDepSearchKeys[target.originalAssetSymbol],
                 ).next();
                 if (findCellsResult.value) {
                   extraCellDepCell = findCellsResult.value;
@@ -122,13 +125,13 @@ export class ExecuteService {
                 },
                 depType: "code",
               };
-              this.symbolToScriptBuffer[target.assetXSymbol] = {
+              this.symbolToScriptBuffer[target.originalAssetSymbol] = {
                 script: poolInfo.assetX.typeScript,
                 cellDep: extraCellDepLike,
               };
             } else {
               this.logger.error(
-                `executeActions | Unsupported token ${target.assetXSymbol}`,
+                `executeActions | Unsupported token ${target.originalAssetSymbol}`,
               );
             }
           }
@@ -162,8 +165,14 @@ export class ExecuteService {
             // TODO: Limiting swapping to only one token per action for now. Might implement multiple token swaps in one action in the future.
             const matchingPoolInfo = scenarioSnapshot.poolInfos.find(
               (poolInfo) =>
-                poolInfo.assetY.symbol === action.targets[0].assetYSymbol &&
-                poolInfo.assetX.symbol === action.targets[0].assetXSymbol,
+                (poolInfo.assetY.symbol ===
+                  action.targets[0].targetAssetSymbol &&
+                  poolInfo.assetX.symbol ===
+                    action.targets[0].originalAssetSymbol) ||
+                (poolInfo.assetY.symbol ===
+                  action.targets[0].originalAssetSymbol &&
+                  poolInfo.assetX.symbol ===
+                    action.targets[0].targetAssetSymbol),
             );
             // TODO: Reverse the poolInfo if the pool is not found
             if (!matchingPoolInfo) {
@@ -182,6 +191,7 @@ export class ExecuteService {
               matchingPool.calculateOutputAmountAndPriceImpactWithExactInput(
                 inputValue.toString(),
               );
+
             matchingPool.tokens[0].amount = inputValue.toString();
             matchingPool.tokens[1].amount = output;
             status = await executeSwap(

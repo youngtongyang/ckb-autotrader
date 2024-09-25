@@ -13,7 +13,7 @@ export async function executeTransfer(
   );
   for (const target of action.targets) {
     executeService.logger.verbose(
-      `== ${target.amount} Units of ${target.assetXSymbol} to ${target.targetAddress} `,
+      `== ${target.amount} Units of ${target.originalAssetSymbol} to ${target.targetAddress} `,
     );
   }
   let signedTx: any;
@@ -27,7 +27,7 @@ export async function executeTransfer(
 
   if (action.actionStatus === ActionStatus.NotStarted) {
     for (const [index, target] of action.targets.entries()) {
-      if (target.assetXSymbol !== target.assetYSymbol) {
+      if (target.originalAssetSymbol !== target.targetAssetSymbol) {
         action.actionStatus = ActionStatus.Failed;
         throw new Error(
           `executeTransfer Action #${index} | AssetX and AssetY must be the same for transfer action`,
@@ -80,13 +80,15 @@ export async function executeTransfer(
       );
       return {
         lock: lock.script,
-        type: executeService.symbolToScriptBuffer[target.assetXSymbol]?.script,
-        capacity: target.assetXSymbol === "CKB" ? target.amount : undefined,
+        type: executeService.symbolToScriptBuffer[target.originalAssetSymbol]
+          ?.script,
+        capacity:
+          target.originalAssetSymbol === "CKB" ? target.amount : undefined,
       };
     });
     const outputs = await Promise.all(outputsPromises);
     const outputsData = action.targets.map((target) => {
-      if (target.assetXSymbol === "CKB") {
+      if (target.originalAssetSymbol === "CKB") {
         return bytesFromAnyString("");
       } else {
         return ccc.numLeToBytes(target.amount, 16);
@@ -102,7 +104,8 @@ export async function executeTransfer(
     );
     for (const target of action.targets) {
       const cellDep =
-        executeService.symbolToScriptBuffer[target.assetXSymbol]?.cellDep;
+        executeService.symbolToScriptBuffer[target.originalAssetSymbol]
+          ?.cellDep;
       if (cellDep !== undefined) {
         tx.addCellDeps(cellDep as CellDepLike);
       }

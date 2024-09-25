@@ -11,11 +11,20 @@ export async function executeSwap(
   pool: Pool,
   slippage: string,
 ): Promise<ActionStatus> {
+  executeService.logger.debug(`executeSwap Action | Started`);
+  executeService.logger.verbose(
+    `executeSwap Action | Action TxHash: ${action.txHash}; Action Status: ${action.actionStatus}`,
+  );
+  for (const target of action.targets) {
+    executeService.logger.verbose(
+      `== ${target.amount} Units of ${target.originalAssetSymbol} to ${target.targetAddress} `,
+    );
+  }
   // TODO: Limiting swapping to only one token per action for now. Might implement multiple token swaps in one action in the future.
   if (action.actionStatus === ActionStatus.NotStarted) {
     try {
       for (const target of action.targets) {
-        if (target.assetXSymbol === target.assetYSymbol) {
+        if (target.originalAssetSymbol === target.targetAssetSymbol) {
           action.actionStatus = ActionStatus.Failed;
           throw new Error(
             `executeSwapCKBtoToken Action #${action.actionID} | AssetX and AssetY must be different for swap action`,

@@ -45,8 +45,8 @@ export class Action {
   targets: {
     targetAddress: string;
     amount: string;
-    assetXSymbol: string;
-    assetYSymbol: string;
+    originalAssetSymbol: string;
+    targetAssetSymbol: string;
   }[];
 
   @Column({ type: "varchar" })

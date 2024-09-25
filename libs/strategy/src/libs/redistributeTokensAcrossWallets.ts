@@ -197,8 +197,8 @@ export async function redistributeTokensAcrossWallets(
             {
               targetAddress: maxReceiver.address,
               amount: amountToTransfer.toString(),
-              assetXSymbol: tokenSymbol,
-              assetYSymbol: tokenSymbol,
+              originalAssetSymbol: tokenSymbol,
+              targetAssetSymbol: tokenSymbol,
             },
           ],
           actionType: ActionType.Transfer,
@@ -208,14 +208,14 @@ export async function redistributeTokensAcrossWallets(
         });
         scenarioSnapshot.actions.push(newAction);
         strategyService.logger.debug(
-          `redistributeTokensAcrossWallets | New Action Generated: ${newAction.actorAddress} transferring ${newAction.targets[0].amount} Unit of ${newAction.targets[0].assetXSymbol} to ${newAction.targets[0].targetAddress}`,
+          `redistributeTokensAcrossWallets | New Action Generated: ${newAction.actorAddress} transferring ${newAction.targets[0].amount} Unit of ${newAction.targets[0].originalAssetSymbol} to ${newAction.targets[0].targetAddress}`,
         );
       } else {
         matchingAction.targets.push({
           targetAddress: maxReceiver.address,
           amount: amountToTransfer.toString(),
-          assetXSymbol: tokenSymbol,
-          assetYSymbol: tokenSymbol,
+          originalAssetSymbol: tokenSymbol,
+          targetAssetSymbol: tokenSymbol,
         });
         strategyService.logger.debug(
           `redistributeTokensAcrossWallets | Existing Action Updated: ${matchingAction.actorAddress} transferring ${amountToTransfer} Unit of ${tokenSymbol} to ${maxReceiver.address}`,

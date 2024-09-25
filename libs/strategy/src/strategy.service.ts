@@ -9,7 +9,7 @@ import { HDKey } from "@scure/bip32";
 import { mnemonicToSeedSync } from "@scure/bip39";
 import axios, { Axios } from "axios";
 import { Strategy } from "parameters";
-import { redistributeTokensAcrossWallets } from "./libs";
+import { redistributeTokensWithinWallet } from "./libs";
 
 @Injectable()
 export class StrategyService {
@@ -59,12 +59,12 @@ export class StrategyService {
   /* Entry Function*/
   async generateActions(scenarioSnapshot: ScenarioSnapshot): Promise<void> {
     // NOTE: These are just examples. Feel free to modify them.
-    redistributeTokensAcrossWallets(this, scenarioSnapshot, ["CKB", "RUSD"]);
-    // redistributeTokensWithinWallet(
-    //   this,
-    //   scenarioSnapshot,
-    //   scenarioSnapshot.walletStatuses[0],
-    // );
+    // redistributeTokensAcrossWallets(this, scenarioSnapshot, ["CKB", "RUSD"]);
+    redistributeTokensWithinWallet(
+      this,
+      scenarioSnapshot,
+      scenarioSnapshot.walletStatuses[0],
+    );
     return;
   }
 
