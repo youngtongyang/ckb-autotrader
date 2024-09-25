@@ -1,22 +1,47 @@
 import { CMMWallet } from "parameters";
-import { MainWalletConfig } from "./walletConfigRegistry";
+import { MainWalletConfig, SecondWalletConfig } from "./walletConfigRegistry";
 
 export const DefaultWallet: CMMWallet = {
-  name: "",
+  name: "Wallet 2",
   icon: "",
   address:
-    "ckt1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsq2jk6pyw9vlnfakx7vp4t5lxg0lzvvsp3c5adflu",
+    "ckt1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsqg7mkruq9gwjdxsgpw8yzmlvzecsqafcysjyrveq",
+  privateKey: "",
   mnemonic: "",
   walletConfig: MainWalletConfig,
 };
 
 export const SecondWallet: CMMWallet = {
-  name: "",
+  name: "Wallet 3",
   icon: "",
   address:
-    "ckt1qrejnmlar3r452tcg57gvq8patctcgy8acync0hxfnyka35ywafvkqgjqfl952m2zt6u0hyvqxvj9n6nzqjk03ezqqqwqqvl",
+    "ckt1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsqdd3z25u024cj4d8rutkggjvw28r42rt0qx5z9aj",
   mnemonic: "",
+  privateKey: "",
+  walletConfig: SecondWalletConfig,
+};
+
+export const ThirdWallet: CMMWallet = {
+  name: "Wallet 4",
+  icon: "",
+  address:
+    "ckt1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsqgtlcnzzna2tqst7jw78egjpujn7hdxpackjmmdp",
+  mnemonic: "",
+  privateKey: "",
+  walletConfig: SecondWalletConfig,
+};
+
+export const FourthWallet: CMMWallet = {
+  name: "Wallet 1",
+  icon: "",
+  address: "",
+  privateKey: "",
   walletConfig: MainWalletConfig,
 };
 
-export const walletRegistry: CMMWallet[] = [DefaultWallet, SecondWallet];
+export const walletRegistry: CMMWallet[] = [
+  DefaultWallet,
+  SecondWallet,
+  ThirdWallet,
+  FourthWallet,
+];

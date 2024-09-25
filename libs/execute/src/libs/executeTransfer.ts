@@ -240,7 +240,7 @@ export async function executeTransfer(
       `executeTransfer Action | Action with hash ${action.txHash} status is ${getTransactionResponse?.status}`,
     );
     if (!getTransactionResponse || getTransactionResponse.status === "sent") {
-      if (Date.now() - action.updatedAt.getTime() >= 12000) {
+      if (Date.now() - action.updatedAt.getTime() >= 120000) {
         executeService.logger.error(
           `executeTransfer Action | Action with hash ${action.txHash} rearranged by not found.`,
         );
@@ -251,7 +251,7 @@ export async function executeTransfer(
         getTransactionResponse &&
         getTransactionResponse.blockNumber === undefined
       ) {
-        if (Date.now() - action.updatedAt.getTime() >= 60000) {
+        if (Date.now() - action.updatedAt.getTime() >= 600000) {
           executeService.logger.error(
             `executeTransfer Action | Action with hash ${action.txHash} rearranged by not committed`,
           );

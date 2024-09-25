@@ -10,12 +10,12 @@ log_level: debug
 common:
   ckb_rpc_url: wss://testnet.ckb.dev/ws
   ckb_indexer_url: https://testnet.ckbapp.dev
-  utxo_swap_api_key:
-  mempool_rpc_url: 
+  utxo_swap_api_key: 
+  mempool_rpc_url: https://mempool.space/api/
 
 mysql:
   host: 
-  port: 3306
+  port: 
   username: 
   password: 
   database: 
@@ -24,8 +24,9 @@ check:
   interval: 1000
 
 execute:
+  slippage: 0.5
   interval: 1000
   max_pending_txs: 250
 
 scenario_snapshot:
-  interval_in_seconds: 10
+  interval_in_seconds: 36000
