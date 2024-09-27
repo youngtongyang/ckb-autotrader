@@ -86,6 +86,24 @@ export class ExecuteService {
       this.logger.verbose(
         `executeActions | Action #${index} | ${action.actionType} | ${action.actionStatus}`,
       );
+      switch (action.actionType) {
+        case ActionType.Transfer:
+          for (const target of action.targets) {
+            this.logger.verbose(
+              `== Transfer ${target.amount} Units of ${target.originalAssetSymbol} to ${target.targetAddress} `,
+            );
+          }
+          break;
+        case ActionType.Swap:
+          for (const target of action.targets) {
+            this.logger.verbose(
+              `== Swap ${target.amount} Units of ${target.originalAssetSymbol} to ${target.targetAssetSymbol} `,
+            );
+          }
+          break;
+        default:
+          throw new Error("Unsupported action type");
+      }
     }
     /* Load scripts for tokens */
     for (const action of scenarioSnapshot.actions) {

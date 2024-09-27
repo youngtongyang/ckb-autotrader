@@ -23,7 +23,7 @@ export enum ActionStatus {
   Aborted = "Aborted",
   NotStarted = "NotStarted",
   TxCreated = "TxCreated",
-  IntentCreationSent = "IntentSent",
+  IntentSent = "IntentSent",
   TransferSent = "TransferSent",
   Committed = "Committed",
   Confirmed = "Confirmed",
@@ -46,7 +46,9 @@ export class Action {
     targetAddress: string;
     amount: string;
     originalAssetSymbol: string;
+    originalAssetTokenDecimals: number;
     targetAssetSymbol: string;
+    targetAssetTokenDecimals: number;
   }[];
 
   @Column({ type: "varchar" })

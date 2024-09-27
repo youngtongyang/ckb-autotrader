@@ -189,6 +189,21 @@ export async function redistributeTokensAcrossWallets(
       const matchingAction = scenarioSnapshot.actions.find(
         (action) => action.actorAddress === maxGiver.address,
       );
+      const matchingPoolInfo = scenarioSnapshot.poolInfos.find(
+        (poolInfo) =>
+          poolInfo.assetX.symbol === tokenSymbol ||
+          poolInfo.assetY.symbol === tokenSymbol,
+      );
+      if (!matchingPoolInfo) {
+        strategyService.logger.error(
+          `redistributeTokensAcrossWallets | Pool Info not found for token ${tokenSymbol}`,
+        );
+        continue;
+      }
+      const tokenDecimals =
+        matchingPoolInfo.assetX.symbol === tokenSymbol
+          ? matchingPoolInfo.assetX.decimals
+          : matchingPoolInfo.assetY.decimals;
       if (!matchingAction) {
         const newAction = strategyService.actionRepo.create({
           scenarioSnapshot: scenarioSnapshot,
@@ -198,7 +213,9 @@ export async function redistributeTokensAcrossWallets(
               targetAddress: maxReceiver.address,
               amount: amountToTransfer.toString(),
               originalAssetSymbol: tokenSymbol,
+              originalAssetTokenDecimals: tokenDecimals,
               targetAssetSymbol: tokenSymbol,
+              targetAssetTokenDecimals: tokenDecimals,
             },
           ],
           actionType: ActionType.Transfer,
@@ -215,7 +232,9 @@ export async function redistributeTokensAcrossWallets(
           targetAddress: maxReceiver.address,
           amount: amountToTransfer.toString(),
           originalAssetSymbol: tokenSymbol,
+          originalAssetTokenDecimals: tokenDecimals,
           targetAssetSymbol: tokenSymbol,
+          targetAssetTokenDecimals: tokenDecimals,
         });
         strategyService.logger.debug(
           `redistributeTokensAcrossWallets | Existing Action Updated: ${matchingAction.actorAddress} transferring ${amountToTransfer} Unit of ${tokenSymbol} to ${maxReceiver.address}`,

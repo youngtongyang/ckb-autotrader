@@ -82,7 +82,7 @@ export async function executeSwap(
         throw new Error(`executeSwap Action | Failed to obtain intent tx hash`);
       } else {
         action.txHash = intentTxHash;
-        action.actionStatus = ActionStatus.IntentCreationSent;
+        action.actionStatus = ActionStatus.IntentSent;
       }
     } catch (e: any) {
       action.actionStatus = ActionStatus.Failed;
@@ -93,7 +93,7 @@ export async function executeSwap(
       throw e;
     }
   }
-  if (action.actionStatus === ActionStatus.IntentCreationSent) {
+  if (action.actionStatus === ActionStatus.IntentSent) {
     // TODO: Implement checking for intent tx status
   }
   return action.actionStatus;

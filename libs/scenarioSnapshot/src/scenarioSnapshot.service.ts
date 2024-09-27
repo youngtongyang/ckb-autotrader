@@ -185,8 +185,11 @@ export class ScenarioSnapshotService {
         activePoolInstance.calculateOutputAmountAndPriceImpactWithExactInput(
           "1",
         );
+      const unifiedBuyPrice =
+        Number(buyPrice) *
+        10 ** (activePool.assetX.decimals - activePool.assetY.decimals);
       this.logger.verbose(
-        `ScenarioSnapshotService.getLatestScenarioSnapshot | Price of Buying 1 ${activePool.assetX.symbol} with ${activePool.assetY.symbol}: ${buyPrice} ${activePool.assetY.symbol}`,
+        `ScenarioSnapshotService.getLatestScenarioSnapshot | Price of Buying 1 ${activePool.assetX.symbol} with ${activePool.assetY.symbol}: ${unifiedBuyPrice} ${activePool.assetY.symbol}`,
       );
       const reverseActivePoolInstance = new Pool({
         tokens: [activePool.assetY, activePool.assetX],
@@ -202,8 +205,11 @@ export class ScenarioSnapshotService {
       } = reverseActivePoolInstance.calculateOutputAmountAndPriceImpactWithExactInput(
         "1",
       );
+      const unifiedReverseBuyPrice =
+        Number(reverseBuyPrice) *
+        10 ** (activePool.assetY.decimals - activePool.assetX.decimals);
       this.logger.verbose(
-        `ScenarioSnapshotService.getLatestScenarioSnapshot | Price of Buying 1 ${activePool.assetY.symbol} with ${activePool.assetX.symbol}: ${reverseBuyPrice} ${activePool.assetX.symbol}`,
+        `ScenarioSnapshotService.getLatestScenarioSnapshot | Price of Buying 1 ${activePool.assetY.symbol} with ${activePool.assetX.symbol}: ${unifiedReverseBuyPrice} ${activePool.assetX.symbol}`,
       );
       const poolSnapshot: PoolSnapshot = {
         assetXSymbol: activePool.assetX.symbol,
@@ -220,8 +226,8 @@ export class ScenarioSnapshotService {
         dayTxsCount: activePool.dayTxsCount,
         dayVolume: activePool.dayVolume,
         dayApr: activePool.dayApr,
-        unitBuyPrice: buyPrice,
-        unitSellPrice: reverseBuyPrice,
+        unitBuyPrice: String(unifiedBuyPrice),
+        unitSellPrice: String(unifiedReverseBuyPrice),
       };
       poolSnapshots.push(poolSnapshot);
       poolInfos.push(activePool);

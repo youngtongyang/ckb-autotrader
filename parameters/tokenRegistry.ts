@@ -1,1 +1,1 @@
-export const activeTokenRegistry: string[] = ["tBtc", "RUSD", "BTCPP"];
+export const activeTokenRegistry: string[] = ["tBtc", "RUSD", "BTCPP", "SEAL"];
