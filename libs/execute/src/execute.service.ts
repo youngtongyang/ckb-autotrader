@@ -119,7 +119,8 @@ export class ExecuteService {
             // Find the token object among the poolInfos
             const poolInfo = scenarioSnapshot.poolInfos.find(
               (poolInfo) =>
-                poolInfo.assetX.symbol === target.originalAssetSymbol,
+                poolInfo.assetX.symbol === target.originalAssetSymbol ||
+                poolInfo.assetY.symbol === target.originalAssetSymbol,
             );
             if (!poolInfo) {
               throw new Error(
@@ -144,13 +145,14 @@ export class ExecuteService {
                 depType: "code",
               };
               this.symbolToScriptBuffer[target.originalAssetSymbol] = {
-                script: poolInfo.assetX.typeScript,
+                script:
+                  poolInfo.assetX.symbol == target.originalAssetSymbol
+                    ? poolInfo.assetX.typeScript
+                    : poolInfo.assetY.typeScript,
                 cellDep: extraCellDepLike,
               };
             } else {
-              this.logger.error(
-                `executeActions | Unsupported token ${target.originalAssetSymbol}`,
-              );
+              continue;
             }
           }
         }
@@ -213,7 +215,8 @@ export class ExecuteService {
               client: this.UTXOSwapClient,
               poolInfo: matchingPoolInfo,
             });
-            const inputValue = Number(action.targets[0].amount) / 10 ** 8;
+            const inputValue =
+              Number(action.targets[0].amount) / 10 ** inputToken.decimals;
             const { output } =
               matchingPool.calculateOutputAmountAndPriceImpactWithExactInput(
                 inputValue.toString(),
