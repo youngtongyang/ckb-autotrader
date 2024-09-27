@@ -3,7 +3,7 @@ import { BalanceConfig, WalletConfig } from "parameters";
 // TODO: Limit symbols to tokenRegistry.
 export const MainWalletConfig: WalletConfig = {
   balanceConfig: [
-    new BalanceConfig("CKB", 1, 1),
+    new BalanceConfig("CKB", 1, 2),
     // new BalanceConfig("RUSD", 1, 1),
     new BalanceConfig("SEAL", 1, 1),
   ],

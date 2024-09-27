@@ -3,6 +3,7 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
@@ -27,6 +28,7 @@ export enum ActionStatus {
   TransferSent = "TransferSent",
   Committed = "Committed",
   Confirmed = "Confirmed",
+  IntentConsumed = "IntentConsumed",
   Stored = "Stored",
 }
 
@@ -35,7 +37,10 @@ export class Action {
   @PrimaryGeneratedColumn("increment")
   actionID: number;
 
-  @Column(() => ScenarioSnapshot)
+  @ManyToOne(
+    () => ScenarioSnapshot,
+    (scenarioSnapshot) => scenarioSnapshot.actions,
+  )
   scenarioSnapshot: ScenarioSnapshot;
 
   @Column({ type: "varchar" })
@@ -67,9 +72,6 @@ export class Action {
     default: ActionStatus.NotStarted,
   })
   actionStatus: ActionStatus;
-
-  @Column({ type: "varchar" })
-  actionTxHash: string;
 
   @Column({ type: "varchar" })
   @Index()

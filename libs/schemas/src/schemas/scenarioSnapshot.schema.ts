@@ -28,7 +28,7 @@ export class WalletStatus {
   address: string;
 
   @Column("simple-json")
-  tokenBalances: { symbol: string; balance: bigint }[];
+  tokenBalances: { symbol: string; balance: string }[];
 }
 
 @Entity()
@@ -76,7 +76,7 @@ export class ScenarioSnapshot {
   // blockHeight: number;
 
   @Column()
-  ScenarioSnapshotStatus: ScenarioSnapshotStatus;
+  scenarioSnapshotStatus: ScenarioSnapshotStatus;
 
   @OneToMany(() => Action, (action) => action.scenarioSnapshot)
   actions: Action[];

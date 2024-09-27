@@ -82,11 +82,14 @@ export class ScenarioSnapshotService {
   async main(): Promise<void> {
     this.logger.debug("ScenarioSnapshotService.main | started");
     const latestScenarioSnapshot = await this.getLatestScenarioSnapshot();
+    await this.scenarioSnapshotRepo.save(latestScenarioSnapshot);
     await this.briefReportOfLatestScenarioSnapshot(latestScenarioSnapshot);
     await this.strategyService.generateActions(latestScenarioSnapshot);
-    this.executeService.executeActions(latestScenarioSnapshot);
+    await this.executeService.executeActions(latestScenarioSnapshot);
     // this.finalizeScenarioSnapshot(latestScenarioSnapshot);
-    // this.scenarioSnapshotRepo.syncScenarioSnapshot(latestScenarioSnapshot);
+    await this.scenarioSnapshotRepo.syncScenarioSnapshot(
+      latestScenarioSnapshot,
+    );
   }
 
   async briefReportOfLatestScenarioSnapshot(
@@ -109,7 +112,6 @@ export class ScenarioSnapshotService {
         );
       });
     }
-    // TODO: Report on actions to take.
   }
 
   async getLatestScenarioSnapshot(): Promise<ScenarioSnapshot> {
@@ -249,7 +251,9 @@ export class ScenarioSnapshotService {
         tokenBalances: [
           {
             symbol: "CKB",
-            balance: await getTokenBalance(this.collector, wallet.address),
+            balance: String(
+              await getTokenBalance(this.collector, wallet.address),
+            ),
           },
         ],
       };
@@ -265,7 +269,7 @@ export class ScenarioSnapshotService {
         );
         walletStatus.tokenBalances.push({
           symbol: activeToken.symbol,
-          balance,
+          balance: String(balance),
         });
         this.logger.verbose(
           `ScenarioSnapshotService.getLatestScenarioSnapshot | ${activeToken.symbol} balance for wallet ${wallet.address} is ${walletStatus.tokenBalances.slice(-1)[0].balance}`,
@@ -283,7 +287,7 @@ export class ScenarioSnapshotService {
     /* Assemble */
     const latestScenarioSnapshot: ScenarioSnapshot = {
       timestamp,
-      ScenarioSnapshotStatus: ScenarioSnapshotStatus.NotStored,
+      scenarioSnapshotStatus: ScenarioSnapshotStatus.NotStored,
       walletStatuses,
       poolSnapshots,
       poolInfos,

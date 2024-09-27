@@ -1,4 +1,4 @@
-import { ScenarioSnapshot } from "@app/schemas";
+import { ScenarioSnapshot, ScenarioSnapshotStatus } from "@app/schemas";
 import { Injectable } from "@nestjs/common";
 import { EntityManager, Repository } from "typeorm";
 
@@ -16,11 +16,22 @@ export class ScenarioSnapshotRepo extends Repository<ScenarioSnapshot> {
     });
     if (scenarioSnapshotInDb === undefined) {
       await this.save(scenarioSnapshot);
+      scenarioSnapshot.scenarioSnapshotStatus = ScenarioSnapshotStatus.Stored;
+      await this.update(
+        { timestamp: scenarioSnapshot.timestamp },
+        {
+          actionGroupStatus: scenarioSnapshot.actionGroupStatus,
+          scenarioSnapshotStatus: scenarioSnapshot.scenarioSnapshotStatus,
+        },
+      );
     } else {
       //TODO: May change this to partial update.
       await this.update(
         { timestamp: scenarioSnapshot.timestamp },
-        scenarioSnapshot,
+        {
+          actionGroupStatus: scenarioSnapshot.actionGroupStatus,
+          scenarioSnapshotStatus: scenarioSnapshot.scenarioSnapshotStatus,
+        },
       );
     }
     return;

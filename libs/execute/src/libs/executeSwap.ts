@@ -11,10 +11,7 @@ export async function executeSwap(
   pool: Pool,
   slippage: string,
 ): Promise<ActionStatus> {
-  executeService.logger.debug(`executeSwap Action | Started`);
-  executeService.logger.verbose(
-    `executeSwap Action | Action TxHash: ${action.txHash === undefined ? "N/A" : action.txHash}; Action Status: ${action.actionStatus}`,
-  );
+  executeService.logger.verbose(`executeSwap Action | Started`);
   for (const target of action.targets) {
     executeService.logger.verbose(
       `== ${target.amount} Units of ${target.originalAssetSymbol} to ${target.targetAddress} `,
@@ -93,8 +90,61 @@ export async function executeSwap(
       throw e;
     }
   }
+
   if (action.actionStatus === ActionStatus.IntentSent) {
-    // TODO: Implement checking for intent tx status
+    const getTransactionResponse =
+      await executeService.CKBClient.getTransaction(action.txHash);
+    executeService.logger.verbose(
+      `executeSwap Action | GetTransactionResponse: ${JSON.stringify(
+        getTransactionResponse?.status,
+      )}`,
+    );
+    switch (getTransactionResponse?.status) {
+      case "sent":
+      case "pending":
+      case "proposed":
+      case undefined:
+        break;
+      case "committed":
+        action.actionStatus = ActionStatus.Committed;
+        break;
+      case "rejected":
+      case "unknown":
+        action.actionStatus = ActionStatus.Failed;
+        break;
+      default:
+        executeService.logger.error(
+          `executeSwap Action | Unknown status: ${getTransactionResponse?.status}`,
+        );
+        break;
+    }
   }
+
+  if (action.actionStatus === ActionStatus.Committed) {
+    switch (
+      await executeService.CKBClient.getCellLive(
+        { txHash: action.txHash, index: 0 },
+        false,
+        true,
+      )
+    ) {
+      case undefined:
+        action.actionStatus = ActionStatus.IntentConsumed;
+        break;
+      default:
+        break;
+    }
+  }
+
+  if (action.actionStatus === ActionStatus.IntentConsumed) {
+    await executeService.actionRepo.save(action);
+    await executeService.actionRepo.updateStatus(action, ActionStatus.Stored);
+    action.actionStatus = (await executeService.actionRepo.findOneBy({
+      actionID: action.actionID,
+    }))!.actionStatus;
+  }
+  executeService.logger.debug(
+    `executeSwap Action | Action TxHash: ${action.txHash === undefined ? "N/A" : action.txHash}; Action Status: ${action.actionStatus}`,
+  );
   return action.actionStatus;
 }

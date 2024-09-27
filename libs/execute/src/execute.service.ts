@@ -231,21 +231,6 @@ export class ExecuteService {
               this.slippage,
             );
             break;
-          // case ActionType.AddLiquidity:
-          //   status = await this.executeAddLiquidity(action);
-          //   break;
-          // case ActionType.RemoveLiquidity:
-          //   status = await this.executeRemoveLiquidity(action);
-          //   break;
-          // case ActionType.SwapExactInputForOutput:
-          //   status = await this.executeSwapExactInputForOutput(action);
-          //   break;
-          // case ActionType.SwapInputForExactOutput:
-          //   status = await this.executeSwapInputForExactOutput(action);
-          //   break;
-          // case ActionType.ClaimProtocolLiquidity:
-          //   status = await this.executeClaimProtocolLiquidity(action);
-          //   break;
           default:
             throw new Error("Unsupported action type");
         }
@@ -266,43 +251,7 @@ export class ExecuteService {
         scenarioSnapshot.actionGroupStatus = ActionGroupStatus.Aborted;
       }
     }
-    // TODO: Clear buffer
+    this.logger.debug("executeActions | Finished");
     return;
   }
-
-  // private async executeAddLiquidity(action: Action): Promise<ActionStatus> {
-  //   //TODO: implement
-  //   console.log(action);
-  //   return ActionStatus.Confirmed;
-  // }
-
-  // private async executeRemoveLiquidity(action: Action): Promise<ActionStatus> {
-  //   //TODO: implement
-  //   console.log(action);
-  //   return ActionStatus.Confirmed;
-  // }
-
-  // private async executeSwapExactInputForOutput(
-  //   action: Action,
-  // ): Promise<ActionStatus> {
-  //   // TODO: implement
-  //   console.log(action);
-  //   return ActionStatus.Confirmed;
-  // }
-
-  // private async executeSwapInputForExactOutput(
-  //   action: Action,
-  // ): Promise<ActionStatus> {
-  //   // TODO: implement
-  //   console.log(action);
-  //   return ActionStatus.Confirmed;
-  // }
-
-  // private async executeClaimProtocolLiquidity(
-  //   action: Action,
-  // ): Promise<ActionStatus> {
-  //   // TODO: implement
-  //   console.log(action);
-  //   return ActionStatus.Confirmed;
-  // }
 }

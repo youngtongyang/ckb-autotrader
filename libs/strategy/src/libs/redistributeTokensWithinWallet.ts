@@ -51,7 +51,7 @@ export async function redistributeTokensWithinWallet(
     priceInCKB: number;
   }[] = [];
   /* redistributeTokensWithinWallet | Calculate sumOfTokenValueIn CKB */
-  let sumOfTokenValuesInCKB: bigint = BigInt(0);
+  let sumOfTokenValuesInCKB: number = 0;
   for (const config of activeBalanceConfigs) {
     const matchingBalance = targetWalletStatus.tokenBalances.find(
       (balance) => balance.symbol === config.balanceConfig.symbol,
@@ -78,7 +78,10 @@ export async function redistributeTokensWithinWallet(
     const updatedBalance =
       Number(matchingBalance.balance) + sumOfMatchingPendingBalanceChanges;
     if (config.balanceConfig.symbol === "CKB") {
-      sumOfTokenValuesInCKB += BigInt(Math.floor(updatedBalance / 10 ** 8));
+      strategyService.logger.verbose(
+        `redistributeTokensWithinWallet | The value of Token ${config.balanceConfig.symbol} is ${updatedBalance / 10 ** 8} in CKB in wallet ${targetWalletStatus.address}`,
+      );
+      sumOfTokenValuesInCKB += updatedBalance / 10 ** 8;
     } else {
       const matchingPoolSnapshot = scenarioSnapshot.poolSnapshots.find(
         (poolSnapshot) =>
@@ -119,23 +122,17 @@ export async function redistributeTokensWithinWallet(
         );
       }
       if (matchingPoolSnapshot.assetXSymbol === "CKB") {
-        const valueOfSymbolInCKB = BigInt(
-          Math.floor(
-            (updatedBalance / 10 ** tokenDecimals) *
-              Number(matchingPoolSnapshot.unitSellPrice),
-          ),
-        );
+        const valueOfSymbolInCKB =
+          (updatedBalance / 10 ** tokenDecimals) *
+          Number(matchingPoolSnapshot.unitSellPrice);
         strategyService.logger.verbose(
           `redistributeTokensWithinWallet | The value of Token ${config.balanceConfig.symbol} is ${valueOfSymbolInCKB} in CKB in wallet ${targetWalletStatus.address}`,
         );
         sumOfTokenValuesInCKB += valueOfSymbolInCKB;
       } else {
-        const valueOfSymbolInCKB = BigInt(
-          Math.floor(
-            (updatedBalance / 10 ** tokenDecimals) *
-              Number(BigInt(matchingPoolSnapshot.unitBuyPrice)),
-          ),
-        );
+        const valueOfSymbolInCKB =
+          (updatedBalance / 10 ** tokenDecimals) *
+          Number(BigInt(matchingPoolSnapshot.unitBuyPrice));
         strategyService.logger.verbose(
           `redistributeTokensWithinWallet | The value of Token ${config.balanceConfig.symbol} is ${valueOfSymbolInCKB} in CKB in wallet ${targetWalletStatus.address}`,
         );
@@ -144,34 +141,37 @@ export async function redistributeTokensWithinWallet(
     }
   }
   strategyService.logger.debug(
-    `redistributeTokensWithinWallet | The value of all token is ${sumOfTokenValuesInCKB} in CKB in wallet ${targetWalletStatus.address}`,
+    `redistributeTokensWithinWallet | The value of all token with balance config is ${sumOfTokenValuesInCKB} in CKB in wallet ${targetWalletStatus.address}`,
   );
 
   /* redistributeTokensWithinWallet | Calculate sumOfPortions */
   let sumOfPortions: number = 0;
   for (const config of activeBalanceConfigs) {
-    if (config.balanceConfig.portionInStrategy === undefined) {
+    if (config.balanceConfig.portionInWallet === undefined) {
       strategyService.logger.warn(
-        `redistributeTokensWithinWallet | Portion in strategy not defined for token ${config.balanceConfig.symbol} in wallet ${config.address}. Will skip strategyService token.`,
+        `redistributeTokensWithinWallet | Portion in strategy not defined for token ${config.balanceConfig.symbol} in wallet ${config.address}. This should not happen.`,
       );
-      continue;
+      throw Error(
+        `redistributeTokensWithinWallet | Portion in strategy not defined for token ${config.balanceConfig.symbol} in wallet ${config.address}. This should not happen.`,
+      );
     }
-    sumOfPortions += config.balanceConfig.portionInStrategy;
+    sumOfPortions += config.balanceConfig.portionInWallet;
   }
 
   /* redistributeTokensWithinWallet | Calculate target balances and generate redistribution reference */
   for (const config of activeBalanceConfigs) {
-    if (config.balanceConfig.portionInStrategy === undefined) {
+    if (config.balanceConfig.portionInWallet === undefined) {
       continue;
     }
-    const portion = config.balanceConfig.portionInStrategy;
+    const portion = config.balanceConfig.portionInWallet;
     let targetBalance: bigint = BigInt(0);
     let tokenDecimals: number | undefined;
     let priceInCKB: number = 0;
     if (config.balanceConfig.symbol === "CKB") {
       targetBalance = BigInt(
-        Math.floor(Number(sumOfTokenValuesInCKB) * (portion / sumOfPortions)) *
-          10 ** 8,
+        Math.floor(
+          Number(sumOfTokenValuesInCKB) * (portion / sumOfPortions) * 10 ** 8,
+        ),
       );
       priceInCKB = 1;
       tokenDecimals = 8;
@@ -213,10 +213,10 @@ export async function redistributeTokensWithinWallet(
       }
       targetBalance = BigInt(
         Math.floor(
-          (Number(sumOfTokenValuesInCKB) * (portion / sumOfPortions)) /
-            priceInCKB,
-        ) *
-          10 ** tokenDecimals,
+          ((Number(sumOfTokenValuesInCKB) * (portion / sumOfPortions)) /
+            priceInCKB) *
+            10 ** tokenDecimals,
+        ),
       );
     }
     if (tokenDecimals === undefined) {
@@ -236,7 +236,7 @@ export async function redistributeTokensWithinWallet(
       );
     }
     strategyService.logger.verbose(
-      `redistributeTokensWithinWallet | Target balance for token ${config.balanceConfig.symbol} is ${targetBalance} in wallet ${config.address}`,
+      `redistributeTokensWithinWallet | Target balance for token ${config.balanceConfig.symbol} is ${targetBalance} (${(Number(targetBalance) / 10 ** tokenDecimals) * priceInCKB} CKB) in wallet ${config.address}`,
     );
     if (targetBalance === BigInt(0)) {
       strategyService.logger.warn(
@@ -267,11 +267,18 @@ export async function redistributeTokensWithinWallet(
         (prev, curr) => prev + curr.balanceChange,
         0,
       );
-    const difference =
+    let difference =
       Number(targetBalance) -
       (Number(matchingBalance.balance) + sumOfMatchingPendingBalanceChanges);
-    if (difference === 0) {
-      // TODO: Implement tolerance
+    if (
+      compareWithTolerance(
+        Number(targetBalance),
+        Number(matchingBalance.balance),
+        0.5,
+        10 * 2,
+      )
+    ) {
+      difference = 0;
       continue;
     }
     redistributionReferences.push({
@@ -285,13 +292,15 @@ export async function redistributeTokensWithinWallet(
   strategyService.logger.debug(
     "redistributeTokensWithinWallet | Redistribution References:",
   );
-  for (const reference of redistributionReferences) {
-    strategyService.logger.debug(
-      `Token: ${reference.tokenSymbol}, DifferenceInBalance: ${reference.difference}, DifferenceInCKB: ${(Number(reference.difference) / 10 ** reference.tokenDecimals) * reference.priceInCKB}, Address: ${reference.address},`,
-    );
+  if (redistributionReferences.length > 1) {
+    for (const reference of redistributionReferences) {
+      strategyService.logger.debug(
+        `Token: ${reference.tokenSymbol}, DifferenceInBalance: ${reference.difference}, DifferenceInCKB: ${(Number(reference.difference) / 10 ** reference.tokenDecimals) * reference.priceInCKB}, Address: ${reference.address},`,
+      );
+    }
   }
   /* redistributeTokensWithinWallet | Generate actions based on redistribution references */
-  while (redistributionReferences.length > 0) {
+  while (redistributionReferences.length > 1) {
     const maxGiver = redistributionReferences.reduce((prev, curr) =>
       Number(prev.difference / 10 ** prev.tokenDecimals) * prev.priceInCKB <
       Number(curr.difference / 10 ** prev.tokenDecimals) * curr.priceInCKB
@@ -310,14 +319,14 @@ export async function redistributeTokensWithinWallet(
           maxGiver.priceInCKB,
         0,
         undefined,
-        10 ** 3,
+        10 ** 2,
       ) ||
       compareWithTolerance(
         (maxReceiver.difference / 10 ** maxReceiver.tokenDecimals) *
           maxReceiver.priceInCKB,
         0,
         undefined,
-        10 ** 3,
+        10 ** 2,
       )
     ) {
       break;
@@ -332,10 +341,12 @@ export async function redistributeTokensWithinWallet(
           maxReceiver.priceInCKB,
       ),
     );
-    const amountToSwap = Math.floor(
-      (amountInCKBToSwap / maxGiver.priceInCKB) * 10 ** maxGiver.tokenDecimals,
+    const amountToSwap = Number(
+      (
+        (amountInCKBToSwap * 10 ** maxGiver.tokenDecimals) /
+        maxGiver.priceInCKB
+      ).toFixed(maxGiver.tokenDecimals),
     );
-
     const matchingAction = scenarioSnapshot.actions.find(
       (action) =>
         action.actorAddress === maxGiver.address &&
@@ -362,14 +373,12 @@ export async function redistributeTokensWithinWallet(
       });
       scenarioSnapshot.actions.push(newAction);
     } else {
-      matchingAction.targets.push({
-        targetAddress: maxReceiver.address,
-        amount: amountToSwap.toString(),
-        originalAssetSymbol: maxGiver.tokenSymbol,
-        originalAssetTokenDecimals: maxGiver.tokenDecimals,
-        targetAssetSymbol: maxReceiver.tokenSymbol,
-        targetAssetTokenDecimals: maxReceiver.tokenDecimals,
-      });
+      strategyService.logger.error(
+        `redistributeTokensWithinWallet | Swap action already exists for ${maxGiver.address}. Multi-target swapping in one transaction is not currently supported.`,
+      );
+      throw Error(
+        `redistributeTokensWithinWallet | Swap action already exists for ${maxGiver.address}. Multi-target swapping in one transaction is not currently supported.`,
+      );
     }
     scenarioSnapshot.pendingBalanceChanges.push({
       address: maxGiver.address,
@@ -384,17 +393,9 @@ export async function redistributeTokensWithinWallet(
     // Drop the giver and receiver from the list if difference has been reduced to 0
     maxGiver.difference += amountToSwap;
     maxReceiver.difference -=
-      Math.floor(amountInCKBToSwap / maxReceiver.priceInCKB) *
+      (amountInCKBToSwap / maxReceiver.priceInCKB) *
       10 ** maxReceiver.tokenDecimals;
-    if (
-      compareWithTolerance(
-        (maxGiver.difference * maxGiver.priceInCKB) /
-          10 ** maxGiver.tokenDecimals,
-        0,
-        undefined,
-        10 ** 3,
-      )
-    ) {
+    if (Math.abs(maxGiver.difference) < Math.abs(maxReceiver.difference)) {
       redistributionReferences.splice(
         redistributionReferences.findIndex(
           (reference) =>
@@ -403,16 +404,7 @@ export async function redistributeTokensWithinWallet(
         ),
         1,
       );
-    }
-    if (
-      compareWithTolerance(
-        (maxReceiver.difference * maxReceiver.priceInCKB) /
-          10 ** maxReceiver.tokenDecimals,
-        0,
-        undefined,
-        10 ** 3,
-      )
-    ) {
+    } else {
       redistributionReferences.splice(
         redistributionReferences.findIndex(
           (reference) =>
