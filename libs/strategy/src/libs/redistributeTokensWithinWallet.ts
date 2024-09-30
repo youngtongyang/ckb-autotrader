@@ -415,7 +415,7 @@ export async function redistributeTokensWithinWallet(
       );
     }
     strategyService.logger.debug(
-      `redistributeTokensWithinWallets | Swap ${amountToSwap} Unit of ${maxGiver.tokenSymbol} into ${amountInCKBToSwap / maxReceiver.priceInCKB} ${maxReceiver.tokenSymbol} from ${maxGiver.address} to ${maxReceiver.address}`,
+      `redistributeTokensWithinWallets | Swap ${amountToSwap} ${maxGiver.tokenSymbol} into ${amountInCKBToSwap / maxReceiver.priceInCKB} ${maxReceiver.tokenSymbol} from ${maxGiver.address} to ${maxReceiver.address}`,
     );
   }
   return;
