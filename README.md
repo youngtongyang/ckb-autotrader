@@ -44,6 +44,8 @@ This repo is a generic scaffold and exemplary project for building backend and b
     - Transfer
     - Swap
 - StrategyService
+    - Redistribute Tokens Across Wallets
+    - Redistribute Tokens Within Wallet
 
 ## Core Concepts
 
