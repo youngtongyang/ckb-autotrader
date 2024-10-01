@@ -52,7 +52,10 @@ This repo is a generic scaffold and exemplary project for building backend and b
 
 ## State-of-the-art Packages in Use
 
-- CCC
+- [CCC - CKBers' Codebase](https://docs.ckbccc.com/index.html): "CCC - CKBers' Codebase" is the next step of "Common Chains Connector".
+    - Empower yourself with CCC to discover the unlimited potential of CKB.
+    - Interoperate with wallets from different chain ecosystems.
+    - Fully enabling CKB's Turing completeness and cryptographic freedom power.
 
 ## Optional Modules
 
@@ -93,10 +96,8 @@ $ pnpm run test:cov
 
 ## Support
 
-- [CCC - CKBers' Codebase](https://docs.ckbccc.com/index.html): "CCC - CKBers' Codebase" is the next step of "Common Chains Connector".
-    - Empower yourself with CCC to discover the unlimited potential of CKB.
-    - Interoperate with wallets from different chain ecosystems.
-    - Fully enabling CKB's Turing completeness and cryptographic freedom power.
+- File issue in the repo
+- Telegram [@Alive24](https://t.me/Aaaaaaaalive24)
 
 ## 
 
