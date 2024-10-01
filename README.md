@@ -63,7 +63,7 @@ This repo is a generic scaffold and exemplary project for building backend and b
 
 - [ ] GraphQL (WIP)
 - [ ] Spore SDK (TBD)
-
+- [ ] Fiber Network Payments (TBD)
 ## Installation
 
 ```bash
