@@ -8,7 +8,6 @@ async function handleRoot(req: any, res: any, next: any) {
   if (req.url === "/") {
     return res.send("OK!");
   }
-
   next();
 }
 

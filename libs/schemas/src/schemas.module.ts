@@ -1,7 +1,7 @@
+import { Action, ScenarioSnapshot } from "@app/schemas";
 import { Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { CkbTx, Plan } from "./schemas";
 
 @Module({
   imports: [
@@ -15,7 +15,7 @@ import { CkbTx, Plan } from "./schemas";
         password: configService.get("mysql.password"),
         database: configService.get("mysql.database"),
         synchronize: true,
-        entities: [CkbTx, Plan],
+        entities: [Action, ScenarioSnapshot],
       }),
     }),
   ],

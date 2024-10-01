@@ -1,7 +1,9 @@
 import { CheckModule } from "@app/check";
 import { loadConfig } from "@app/commons";
+import { ExecuteModule } from "@app/execute";
+import { ScenarioSnapshotModule } from "@app/scenarioSnapshot";
 import { SchemasModule } from "@app/schemas";
-import { SendModule } from "@app/send";
+import { StrategyModule } from "@app/strategy";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 
@@ -13,7 +15,9 @@ import { ConfigModule } from "@nestjs/config";
     }),
     SchemasModule,
     CheckModule,
-    SendModule,
+    ExecuteModule,
+    ScenarioSnapshotModule,
+    StrategyModule,
   ],
 })
 export class AppModule {}
