@@ -18,8 +18,10 @@
 </p>
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+  
 > Currently this project is at the 2410-Piloting Version.
-> Please feel free to file issue for your new feature request and track them in the [project page](https://github.com/users/Alive24/projects/2)
+> 
+> Please feel free to file issues for your new feature requests and track them in the [project page](https://github.com/users/Alive24/projects/2)
 
 ## CKB-Autotrader
 
