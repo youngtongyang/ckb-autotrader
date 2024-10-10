@@ -40,6 +40,7 @@ export class ScenarioSnapshotService {
   private readonly pathPrefix: string;
   private readonly feeRate: number;
   private readonly collector: Collector;
+  private readonly searchKey: string;
   private activePools: Token[] = [];
   private temporaryWallets: CMMWallet[] = [];
 
@@ -66,15 +67,19 @@ export class ScenarioSnapshotService {
       ? new ccc.ClientPublicMainnet({ url: ckbRpcUrl })
       : new ccc.ClientPublicTestnet({ url: ckbRpcUrl });
     this.collector = new Collector({ ckbIndexerUrl });
-
+    const searchKey = configService.get<string>("utxo.search_key");
+    if (searchKey !== undefined) {
+      this.searchKey = searchKey;
+    }
     const scenarioSnapshotIntervalInSeconds = configService.get<number>(
       "scenario_snapshot.interval_in_seconds",
     );
     if (scenarioSnapshotIntervalInSeconds === undefined) {
       throw Error("Empty scenario_snapshot.interval_in_seconds");
     }
+    
     this.logger.verbose("ScenarioSnapshotService.constructor | finished");
-    autoRun(this.logger, scenarioSnapshotIntervalInSeconds * 1000, () =>
+    autoRun(this.logger, scenarioSnapshotIntervalInSeconds * 40, () =>
       this.main(),
     );
   }
@@ -121,12 +126,17 @@ export class ScenarioSnapshotService {
     const walletStatuses: WalletStatus[] = [];
     /* Get PoolInfos and store poolSnapshots */
     // TODO: Pagination might be necessary in the future
-    const { list: pools } = await this.UTXOSwapClient.getPoolsByToken({
+    console.log("searchKey: " + this.searchKey);
+    let params = {
       pageNo: 0,
       pageSize: 100,
-      searchKey:
-        "0x0000000000000000000000000000000000000000000000000000000000000000",
-    });
+    };
+    if (this.searchKey !== undefined && this.searchKey !== "") {
+      (params as any).poolTypeHashes = [this.searchKey];
+    } else {
+      (params as any).searchKey = "0x0000000000000000000000000000000000000000000000000000000000000000";
+    }
+    const { list: pools } = await this.UTXOSwapClient.getPoolsByToken(params);
     const activePools = pools.filter(
       (pool) =>
         ["CKB", ...activeTokenRegistry].includes(pool.assetY.symbol) &&

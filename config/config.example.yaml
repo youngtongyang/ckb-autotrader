@@ -30,3 +30,6 @@ execute:
 
 scenario_snapshot:
   interval_in_seconds: 36000
+
+utxo:
+  search_key: ""

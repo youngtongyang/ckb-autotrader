@@ -278,6 +278,9 @@ export async function redistributeTokensWithinWallet(
         10 * 2,
       )
     ) {
+      strategyService.logger.debug(
+        `redistributeTokensWithinWallet | ${config.balanceConfig.symbol} compareWithTolerance result no need action`,
+      );
       difference = 0;
       continue;
     }
@@ -290,7 +293,7 @@ export async function redistributeTokensWithinWallet(
     });
   }
   strategyService.logger.debug(
-    "redistributeTokensWithinWallet | Redistribution References:",
+    "redistributeTokensWithinWallet | Redistribution References: redistributionReferences length is " + redistributionReferences.length,
   );
   if (redistributionReferences.length > 1) {
     for (const reference of redistributionReferences) {
